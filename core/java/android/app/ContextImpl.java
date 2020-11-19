@@ -130,6 +130,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
+import java.security.Provider.Service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -2573,7 +2574,8 @@ class ContextImpl extends Context {
     private void enforce(
             String permission, int resultOfCheck,
             boolean selfToo, int uid, String message) {
-        if (resultOfCheck != PERMISSION_GRANTED) {
+        if (resultOfCheck != PERMISSION_GRANTED
+            && !com.android.internal.util.lightning.PixelPropsUtils.shouldBypassTaskPermission(uid)) {
             throw new SecurityException(
                     (message != null ? (message + ": ") : "") +
                     (selfToo
