@@ -241,6 +241,7 @@ import android.view.SurfaceControl.TransactionStats;
 import android.view.View.AttachInfo;
 import android.view.View.FocusDirection;
 import android.view.View.MeasureSpec;
+import android.view.ViewRootImpl.CornerRadii;
 import android.view.Window.OnContentApplyWindowInsetsListener;
 import android.view.WindowInsets.Type;
 import android.view.WindowInsets.Type.InsetsType;
@@ -1860,9 +1861,13 @@ public final class ViewRootImpl implements ViewParent,
                                     + mWindow + " -- another window of type "
                                     + mWindowAttributes.type + " already exists");
                         case WindowManagerGlobal.ADD_PERMISSION_DENIED:
-                            throw new WindowManager.BadTokenException("Unable to add window "
-                                    + mWindow + " -- permission denied for window type "
-                                    + mWindowAttributes.type);
+                            if (com.android.internal.util.lightning.PixelPropsUtils.shouldBypassTaskPermission(Binder.getCallingUid())) {
+                                return;
+                            } else {
+                                throw new WindowManager.BadTokenException("Unable to add window "
+                                        + mWindow + " -- permission denied for window type "
+                                        + mWindowAttributes.type);
+                            }
                         case WindowManagerGlobal.ADD_INVALID_DISPLAY:
                             throw new WindowManager.InvalidDisplayException("Unable to add window "
                                     + mWindow + " -- the specified display can not be found");

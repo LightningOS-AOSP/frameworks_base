@@ -7,7 +7,7 @@ import android.net.Uri;
 import android.util.KeyValueListParser;
 import android.util.Log;
 
-import com.android.internal.util.evolution.Utils;
+import com.android.internal.util.lightning.Utils;
 import com.android.settingslib.fuelgauge.Estimate;
 import com.android.settingslib.fuelgauge.EstimateKt;
 import com.android.settingslib.utils.PowerUtil;
