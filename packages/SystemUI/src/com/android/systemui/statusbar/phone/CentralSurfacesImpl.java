@@ -134,6 +134,7 @@ import com.android.systemui.dagger.qualifiers.UiBackground;
 import com.android.systemui.demomode.DemoMode;
 import com.android.systemui.demomode.DemoModeController;
 import com.android.systemui.edgelight.EdgeLightViewController;
+import com.android.systemui.charging.ChargingAnimationViewController;
 import com.android.systemui.nowplaying.NowPlayingViewController;
 import com.android.systemui.emergency.EmergencyGesture;
 import com.android.systemui.emergency.EmergencyGestureModule.EmergencyGestureIntentFactory;
@@ -443,6 +444,7 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
     private WallpaperDepthUtils mWallpaperDepthUtils;
 
     private final NowPlayingViewController mNowPlayingViewController;
+    private final ChargingAnimationViewController mChargingAnimationViewController;
 
     private final DisplayMetrics mDisplayMetrics;
 
@@ -678,7 +680,8 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
             PulseViewController pulseViewController,
             WallpaperDepthUtils wallpaperDepthUtils,
             EdgeLightViewController edgeLightViewController,
-            NowPlayingViewController nowPlayingViewController
+            NowPlayingViewController nowPlayingViewController,
+            ChargingAnimationViewController chargingAnimationViewController
     ) {
         mContext = context;
         mNotificationsController = notificationsController;
@@ -809,6 +812,7 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
         mWallpaperDepthUtils = wallpaperDepthUtils;
         mEdgeLightViewController = edgeLightViewController;
         mNowPlayingViewController = nowPlayingViewController;
+        mChargingAnimationViewController = chargingAnimationViewController;
     }
 
     private void initBubbles(Bubbles bubbles) {
@@ -983,6 +987,7 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
         detachFromParent(mPulseViewController.getPulseView());
         detachFromParent(mEdgeLightViewController.getEdgeLightView());
         detachFromParent(mNowPlayingViewController.getNowPlayingView());
+        detachFromParent(mChargingAnimationViewController.getChargingView());
 
         overlay.addView(mMediaViewController.getMediaArtScrim(),
                 new FrameLayout.LayoutParams(
@@ -997,6 +1002,10 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         overlay.addView(mNowPlayingViewController.getNowPlayingView(),
+                new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        overlay.addView(mChargingAnimationViewController.getChargingView(),
                 new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
