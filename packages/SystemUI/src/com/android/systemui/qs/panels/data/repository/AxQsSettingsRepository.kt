@@ -34,6 +34,7 @@ import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderStyle
 import com.android.systemui.qs.panels.shared.model.LunarisQsSpacing
 import com.android.systemui.qs.panels.ui.compose.TileShapeConfig
 import com.android.systemui.qs.panels.ui.compose.TileShapeStyle
+import com.android.systemui.qs.panels.ui.compose.TileSpacingConfig
 import com.android.systemui.user.data.repository.UserRepository
 import com.android.systemui.util.settings.SecureSettings
 import com.android.systemui.util.settings.SettingsProxyExt.observerFlow
@@ -60,6 +61,7 @@ constructor(
     private val secureSettings: SecureSettings,
     private val systemSettings: SystemSettings,
     private val tileShapeConfig: TileShapeConfig,
+    private val tileSpacingConfig: TileSpacingConfig,
     private val userRepository: UserRepository,
     @Application private val applicationScope: CoroutineScope,
     @Background private val backgroundDispatcher: CoroutineDispatcher,
@@ -136,20 +138,7 @@ constructor(
             .distinctUntilChanged()
             .stateIn(applicationScope, SharingStarted.Eagerly, AxQsTileStyle.PILL)
 
-    val spacing: StateFlow<LunarisQsSpacing> =
-        combine(
-                intSetting("ax_qs_tile_gap", LunarisQsSpacing().tileGap),
-                intSetting("ax_qs_side_padding", LunarisQsSpacing().sidePadding),
-                intSetting("ax_qs_top_padding", LunarisQsSpacing().topPadding),
-            ) { tileGap, sidePadding, topPadding ->
-                LunarisQsSpacing(
-                    tileGap = tileGap.coerceIn(8, 28),
-                    sidePadding = sidePadding.coerceIn(8, 40),
-                    topPadding = topPadding.coerceIn(0, 32),
-                )
-            }
-            .distinctUntilChanged()
-            .stateIn(applicationScope, SharingStarted.Eagerly, LunarisQsSpacing())
+    val spacing: StateFlow<LunarisQsSpacing> = tileSpacingConfig.spacing
 
     val verticalSliderStyles: StateFlow<Map<AxQsVerticalSliderKey, AxQsVerticalSliderStyle>> =
         verticalSliderStyleSettings()
