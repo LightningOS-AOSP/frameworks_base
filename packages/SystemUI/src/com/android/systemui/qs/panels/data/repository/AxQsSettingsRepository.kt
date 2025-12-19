@@ -128,6 +128,9 @@ constructor(
                 when (style) {
                     TileShapeStyle.ROUNDED -> AxQsTileStyle.PILL
                     TileShapeStyle.ROUNDED_RECTANGLE -> AxQsTileStyle.ROUNDED_SQUARE
+                    TileShapeStyle.ROUNDED_WHEN_ACTIVE,
+                    TileShapeStyle.RECTANGULAR_WHEN_ACTIVE,
+                    -> AxQsTileStyle.DYNAMIC
                 }
             }
             .distinctUntilChanged()
