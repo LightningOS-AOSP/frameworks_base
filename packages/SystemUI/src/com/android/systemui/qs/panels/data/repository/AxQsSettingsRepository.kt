@@ -32,6 +32,8 @@ import com.android.systemui.qs.panels.shared.model.AxQsTileStyle
 import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderKey
 import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderStyle
 import com.android.systemui.qs.panels.shared.model.LunarisQsSpacing
+import com.android.systemui.qs.panels.ui.compose.TileShapeConfig
+import com.android.systemui.qs.panels.ui.compose.TileShapeStyle
 import com.android.systemui.user.data.repository.UserRepository
 import com.android.systemui.util.settings.SecureSettings
 import com.android.systemui.util.settings.SettingsProxyExt.observerFlow
@@ -57,6 +59,7 @@ class AxQsSettingsRepository
 constructor(
     private val secureSettings: SecureSettings,
     private val systemSettings: SystemSettings,
+    private val tileShapeConfig: TileShapeConfig,
     private val userRepository: UserRepository,
     @Application private val applicationScope: CoroutineScope,
     @Background private val backgroundDispatcher: CoroutineDispatcher,
@@ -120,8 +123,13 @@ constructor(
     val showWeather: StateFlow<Boolean> = boolSetting(SHOW_WEATHER, true)
 
     val tileStyle: StateFlow<AxQsTileStyle> =
-        intSetting("ax_qs_tile_style", AxQsTileStyle.PILL.settingValue)
-            .map(AxQsTileStyle::fromSetting)
+        tileShapeConfig.shapeStyle
+            .map { style ->
+                when (style) {
+                    TileShapeStyle.ROUNDED -> AxQsTileStyle.PILL
+                    TileShapeStyle.ROUNDED_RECTANGLE -> AxQsTileStyle.ROUNDED_SQUARE
+                }
+            }
             .distinctUntilChanged()
             .stateIn(applicationScope, SharingStarted.Eagerly, AxQsTileStyle.PILL)
 

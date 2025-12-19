@@ -116,6 +116,7 @@ import com.android.systemui.process.condition.SystemProcessCondition;
 import com.android.systemui.qs.FgsManagerController;
 import com.android.systemui.qs.FgsManagerControllerImpl;
 import com.android.systemui.qs.footer.dagger.FooterActionsModule;
+import com.android.systemui.qs.panels.ui.compose.TileShapeConfig;
 import com.android.systemui.qs.tiles.impl.qr.ui.model.QRCodeScannerModule;
 import com.android.systemui.recents.Recents;
 import com.android.systemui.recordissue.RecordIssueModule;
@@ -571,6 +572,12 @@ public abstract class SystemUIModule {
     @SysUISingleton
     static BcSmartspaceDataPlugin provideBcSmartspaceDataPlugin() {
         return new BcSmartspaceDataProvider();
+    }
+
+    @Provides
+    @SysUISingleton
+    static TileShapeConfig provideTileShapeConfig(Context context) {
+        return new TileShapeConfig(context);
     }
     @Provides
     @SysUISingleton
