@@ -136,10 +136,11 @@
         android:key="vpn"
         android:title="@string/legacy_vpn_name" />
 
-    <com.android.systemui.tuner.StatusBarSwitch
-        android:icon="@*android:drawable/ic_battery"
-        android:key="battery"
-        android:title="@string/battery" />
+    <com.android.systemui.tuner.BatteryPreference
+        android:icon="@drawable/ic_statusbar_battery"
+        android:title="@string/battery"
+        android:summary="%s"
+        android:entries="@array/battery_options" />
 
     <com.android.systemui.tuner.StatusBarSwitch
         android:icon="@drawable/ic_statusbar_alarm"
@@ -160,7 +161,7 @@
         sysui:defValue="false" />
 
     <com.android.systemui.tuner.TunerSwitch
-        android:icon="@drawable/ic_settings_lte_to_4g"
+        android:icon="@drawable/ic_statusbar_fourg"
         android:key="system:show_fourg_icon"
         android:title="@string/show_fourg_icon_title"
         sysui:defValue="false" />
