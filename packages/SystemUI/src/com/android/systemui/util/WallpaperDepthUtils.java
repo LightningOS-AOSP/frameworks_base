@@ -71,6 +71,7 @@ public class WallpaperDepthUtils {
     private boolean mDozing;
     private boolean mBouncerShowing;
     private boolean mGlanceableHubShowing;
+    private boolean mDynamicBarExpanded;
     private boolean mWallpaperLoaded = false;
     private String mPreviousWallpaperPath;
     private Bitmap mWallpaperBitmap;
@@ -113,6 +114,10 @@ public class WallpaperDepthUtils {
         return instance;
     }
 
+    public static WallpaperDepthUtils get() {
+        return instance;
+    }
+
     public void onUnlockStarted() {
         mUnlocking = true;
         hideDepthWallpaperImmediate();
@@ -145,6 +150,16 @@ public class WallpaperDepthUtils {
         }
         mBouncerShowing = showing;
         if (mBouncerShowing) {
+            hideDepthWallpaper();
+        } else {
+            updateDepthWallpaperVisibility();
+        }
+    }
+
+    public void setDynamicBarExpanded(boolean expanded) {
+        if (mDynamicBarExpanded == expanded) return;
+        mDynamicBarExpanded = expanded;
+        if (expanded) {
             hideDepthWallpaper();
         } else {
             updateDepthWallpaperVisibility();
@@ -267,6 +282,7 @@ public class WallpaperDepthUtils {
                 && !mDozing
                 && !mBouncerShowing
                 && !mGlanceableHubShowing
+                && !mDynamicBarExpanded
                 && !mUnlocking
                 && currentState == ScrimState.KEYGUARD
                 && mContext.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE
