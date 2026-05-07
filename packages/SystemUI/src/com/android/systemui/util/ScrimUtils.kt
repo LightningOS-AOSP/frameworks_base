@@ -116,6 +116,8 @@ class ScrimUtils private constructor(context: Context?) {
                     mWallpaperDepthUtils?.updateDepthWallpaperVisibility()
                     mWallpaperDepthUtils?.updateDepthWallpaper()
                 }, 120)
+            } else {
+                mWallpaperDepthUtils?.hideDepthWallpaperImmediate()
             }
         }
     }
@@ -125,6 +127,7 @@ class ScrimUtils private constructor(context: Context?) {
         postKeyguardRetry()
         if (fadingAway) {
             mWallpaperDepthUtils?.hideDepthWallpaper()
+            mWallpaperDepthUtils?.hideDepthWallpaperImmediate()
         }
     }
 
