@@ -1051,7 +1051,7 @@ private fun actionsFor(event: IslandEvent, context: Context): List<ChipAction> =
         )
     }
     is IslandEvent.Torch -> listOf(
-        ChipAction(ActionIcon.STOP) { vm, _, _ -> vm.toggleTorch() },
+        ChipAction(ActionIcon.STOP) { vm, event, _ -> vm.dismissEvent(event) },
     )
     else -> emptyList()
 }
