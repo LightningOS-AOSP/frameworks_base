@@ -50,6 +50,7 @@ import android.os.Bundle;
 import android.os.Message;
 import android.os.Process;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -702,6 +703,17 @@ class AppErrors {
             if (r == null || !makeAppCrashingLocked(r, shortMsg, longMsg, stackTrace, data)) {
                 return;
             }
+
+            // Add paste content for Lightning option
+            String devFP = SystemProperties.get("ro.vendor.build.fingerprint", "");
+            String lightningVers = SystemProperties.get("ro.lightning.version", "");
+            String boardName = SystemProperties.get("ro.product.board", "");
+            data.paste = "time: " + timeMillis + "\n" +
+            "device fp:" + devFP + "\n" +
+            "product board:" + boardName + "\n" +
+            "lightningos vers:" + lightningVers + "\n" +
+            "msg: " + longMsg + "\n" +
+            "stacktrace: " + stackTrace;
 
             final Message msg = Message.obtain();
             msg.what = ActivityManagerService.SHOW_ERROR_UI_MSG;
