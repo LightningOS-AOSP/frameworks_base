@@ -27,16 +27,14 @@
         android:outlineSpotShadowColor="@android:color/transparent"
         android:background="@android:color/transparent"
         android:touchscreenBlocksFocus="false"
-        app:expanded="false"
         android:theme="@style/SettingsLibTheme.CollapsingToolbar.Expressive">
 
         <com.google.android.material.appbar.CollapsingToolbarLayout
             android:id="@+id/collapsing_toolbar"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/settingslib_toolbar_layout_height"
+            android:layout_height="@dimen/settingslib_oneui_toolbar_layout_height"
             app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
             app:toolbarId="@id/action_bar"
-            app:maxLines="2"
             style="@style/SettingsLibCollapsingToolbarLayoutStyle.Expressive">
 
             <Toolbar
@@ -49,10 +47,13 @@
                 android:transitionName="shared_element_view"
                 android:nextFocusForward="@+id/content_frame"
                 android:touchscreenBlocksFocus="false"
-                app:layout_collapseMode="pin">
+                android:clipChildren="false"
+                app:layout_collapseMode="pin" />
 
-                <include layout="@layout/settingslib_expressive_toolbar_buttons"/>
-            </Toolbar>
+            <include layout="@layout/settingslib_expressive_toolbar_buttons"
+                     android:layout_width="wrap_content"
+                     android:layout_height="?attr/actionBarSize"
+                     android:layout_gravity="top|end" />
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>

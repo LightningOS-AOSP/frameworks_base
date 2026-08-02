@@ -18,20 +18,25 @@ package com.android.settingslib.collapsingtoolbar;
 
 import static android.text.Layout.HYPHENATION_FREQUENCY_NORMAL_FAST;
 
+import android.animation.TimeInterpolator;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.text.LineBreakConfig;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toolbar;
 
 import androidx.annotation.DrawableRes;
@@ -54,11 +59,26 @@ import com.google.android.material.floatingtoolbar.FloatingToolbarLayout;
 import java.util.List;
 
 /**
- * A delegate that allows to use the collapsing toolbar layout in hosts that doesn't want/need to
- * extend from {@link CollapsingToolbarBaseActivity} or from {@link CollapsingToolbarBaseFragment}.
+ * A delegate that allows to use the collapsing toolbar layout in hosts that
+ * doesn't want/need to extend from {@link CollapsingToolbarBaseActivity} or from
+ * {@link CollapsingToolbarBaseFragment}.
+ *
+ * <p>When running on SDK 36+ with the Expressive theme, this delegate replaces the standard
+ * Material CollapsingToolbarLayout animation with a Samsung One UI-style animation:
+ * <ul>
+ *   <li>A large bold title anchored at the bottom-start of the expanded header.</li>
+ *   <li>A smooth cross-fade to a compact toolbar title (no scale/slide jitter).</li>
+ *   <li>One UI cubic-Bezier easing applied to all alpha transitions.</li>
+ *   <li>Linear elevation interpolation (0 dp → 4 dp) as the header collapses.</li>
+ * </ul>
  */
 public class CollapsingToolbarDelegate {
     private static final String TAG = "CTBdelegate";
+    private static final float EXPANDED_FADE_END = 0.45f;
+    private static final float COLLAPSED_FADE_START = 0.45f;
+    private static final float MAX_ELEVATION_DP = 4f;
+    private static final float EXPANDED_TITLE_PARALLAX_DP = 10f;
+
     /** Interface to be implemented by the host of the Collapsing Toolbar. */
     public interface HostCallback {
         /**
@@ -78,6 +98,73 @@ public class CollapsingToolbarDelegate {
 
         /** Sets a title on the host. */
         void setOuterTitle(CharSequence title);
+    }
+
+    private static final class OneUiInterpolator implements TimeInterpolator {
+        private static final float P1X = 0.25f;
+        private static final float P1Y = 0.46f;
+        private static final float P2X = 0.45f;
+        private static final float P2Y = 0.94f;
+
+        @Override
+        public float getInterpolation(float t) {
+            float u = t;
+            for (int i = 0; i < 8; i++) {
+                float ux2 = u * u;
+                float ux3 = ux2 * u;
+                float bx = 3f * P1X * u * (1f - u) * (1f - u)
+                        + 3f * P2X * ux2 * (1f - u)
+                        + ux3;
+                float dbx = 3f * P1X * (1f - 4f * u + 3f * ux2)
+                        + 3f * P2X * (2f * u - 3f * ux2)
+                        + 3f * ux2;
+                if (Math.abs(dbx) < 1e-6f) break;
+                u = u - (bx - t) / dbx;
+                u = Math.max(0f, Math.min(1f, u));
+            }
+            float ux2 = u * u;
+            float ux3 = ux2 * u;
+            return 3f * P1Y * u * (1f - u) * (1f - u)
+                    + 3f * P2Y * ux2 * (1f - u)
+                    + ux3;
+        }
+    }
+
+    private class OneUiOffsetListener implements AppBarLayout.OnOffsetChangedListener {
+        private final float mMaxElevationPx;
+        private final float mParallaxPx;
+        private final OneUiInterpolator mInterpolator = new OneUiInterpolator();
+
+        OneUiOffsetListener(@NonNull Context context) {
+            float density = context.getResources().getDisplayMetrics().density;
+            mMaxElevationPx = MAX_ELEVATION_DP * density;
+            mParallaxPx = EXPANDED_TITLE_PARALLAX_DP * density;
+        }
+
+        @Override
+        public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
+            final int totalScrollRange = appBarLayout.getTotalScrollRange();
+            if (totalScrollRange == 0) {
+                return;
+            }
+
+            final float collapseRatio =
+                    Math.abs(verticalOffset) / (float) totalScrollRange;
+
+            if (verticalOffset < 0) {
+                appBarLayout.setElevation(mMaxElevationPx);
+            } else {
+                appBarLayout.setElevation(0f);
+            }
+
+            if (mToolbarButtonsContainer != null) {
+                if (mToolbarButtonsContainer.getHeight() == 0) return;
+                
+                float maxTranslationY = totalScrollRange * 0.5f;
+                
+                mToolbarButtonsContainer.setTranslationY(maxTranslationY * (1f - collapseRatio));
+            }
+        }
     }
 
     private static final float TOOLBAR_LINE_SPACING_MULTIPLIER = 1.1f;
@@ -106,10 +193,13 @@ public class CollapsingToolbarDelegate {
     private final HostCallback mHostCallback;
 
     private boolean mUseCollapsingToolbar;
-
     private boolean mIsExpressiveTheme;
 
+    @Nullable
     private FloatingToolbarLayout mFloatingToolbarLayout;
+
+    @Nullable
+    private OneUiOffsetListener mOneUiOffsetListener;
 
     public CollapsingToolbarDelegate(@NonNull HostCallback hostCallback) {
         this(hostCallback, /* useCollapsingToolbar= */ true);
@@ -158,10 +248,10 @@ public class CollapsingToolbarDelegate {
         mAppBarLayout = view.findViewById(R.id.app_bar);
 
         if (!useCollapsingToolbar) {
-            // In the non-collapsing toolbar layout, we need to set the background of the app bar to
-            // the same as the activity background so that it covers the items extending above the
-            // bounds of the list for edge-to-edge.
-            TypedArray ta = container.getContext().obtainStyledAttributes(new int[] {
+            // In the non-collapsing toolbar layout, set the background of the app bar to the same
+            // as the activity background so that it covers items extending above the bounds of the
+            // list for edge-to-edge.
+            TypedArray ta = container.getContext().obtainStyledAttributes(new int[]{
                     android.R.attr.windowBackground});
             Drawable background = ta.getDrawable(0);
             ta.recycle();
@@ -189,7 +279,6 @@ public class CollapsingToolbarDelegate {
                 if (useCollapsingToolbar && mIsExpressiveTheme) {
                     actionBar.setHomeAsUpIndicator(R.drawable.settingslib_expressive_icon_back);
                 }
-                actionBar.setDisplayShowTitleEnabled(true);
             }
         }
 
@@ -199,14 +288,22 @@ public class CollapsingToolbarDelegate {
         initToolbarActionButton(view.findViewById(R.id.action_button));
         initToolbarActionIconOnlyButton(view.findViewById(R.id.action_icon_only_button));
 
-        initFloatingToolbar(context, view.findViewById(R.id.floating_toolbar));
+        FloatingToolbarLayout floatingToolbar = view.findViewById(R.id.floating_toolbar);
+        if (floatingToolbar != null) {
+            initFloatingToolbar(context, floatingToolbar);
+        }
         return view;
     }
 
     /**
      * Initialize the collapsing toolbar layout.
-     * @param collapsingToolbarLayout
-     * @param appBarLayout
+     *
+     * <p>On SDK 36+ with the Expressive theme, this method also:
+     * <ul>
+     *   <li>Disables Material's native title animations.</li>
+     *   <li>Injects the One UI custom expanded and collapsed title views.</li>
+     *   <li>Attaches the {@link OneUiOffsetListener}.</li>
+     * </ul>
      */
     public void initCollapsingToolbar(CollapsingToolbarLayout collapsingToolbarLayout,
             AppBarLayout appBarLayout) {
@@ -214,15 +311,60 @@ public class CollapsingToolbarDelegate {
             collapsingToolbarLayout.setLineSpacingMultiplier(TOOLBAR_LINE_SPACING_MULTIPLIER);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 collapsingToolbarLayout.setHyphenationFrequency(HYPHENATION_FREQUENCY_NORMAL_FAST);
-                collapsingToolbarLayout.setStaticLayoutBuilderConfigurer(builder ->
-                        builder.setLineBreakConfig(
+                collapsingToolbarLayout.setStaticLayoutBuilderConfigurer(
+                        builder -> builder.setLineBreakConfig(
                                 new LineBreakConfig.Builder()
                                         .setLineBreakWordStyle(
                                                 LineBreakConfig.LINE_BREAK_WORD_STYLE_PHRASE)
                                         .build()));
             }
         }
+
+        if (mIsExpressiveTheme && collapsingToolbarLayout != null && appBarLayout != null) {
+            setupOneUiTitleAnimation(collapsingToolbarLayout, appBarLayout);
+        }
+
         autoSetCollapsingToolbarLayoutScrolling(appBarLayout);
+    }
+
+    private void setupOneUiTitleAnimation(
+            @NonNull CollapsingToolbarLayout collapsingToolbarLayout,
+            @NonNull AppBarLayout appBarLayout) {
+        appBarLayout.setElevation(0f);
+
+        if (mOneUiOffsetListener != null) {
+            appBarLayout.removeOnOffsetChangedListener(mOneUiOffsetListener);
+        }
+        mOneUiOffsetListener = new OneUiOffsetListener(appBarLayout.getContext());
+        appBarLayout.addOnOffsetChangedListener(mOneUiOffsetListener);
+    }
+
+    private float getExpandedTitleSizeSp(@NonNull Context context) {
+        try {
+            return context.getResources()
+                    .getDimension(R.dimen.settingslib_oneui_expanded_title_size)
+                    / context.getResources().getDisplayMetrics().scaledDensity;
+        } catch (android.content.res.Resources.NotFoundException e) {
+            return 34f;
+        }
+    }
+
+    private float getCollapsedTitleSizeSp(@NonNull Context context) {
+        try {
+            return context.getResources()
+                    .getDimension(R.dimen.settingslib_oneui_collapsed_title_size)
+                    / context.getResources().getDisplayMetrics().scaledDensity;
+        } catch (android.content.res.Resources.NotFoundException e) {
+            return 20f;
+        }
+    }
+
+    private int resolveColorOnSurface(@NonNull Context context) {
+        TypedArray ta = context.obtainStyledAttributes(
+                new int[]{android.R.attr.textColorPrimary});
+        int color = ta.getColor(0, 0xFF000000 /* fallback black */);
+        ta.recycle();
+        return color;
     }
 
     /** Initialize toolbar buttons container. */
@@ -252,11 +394,12 @@ public class CollapsingToolbarDelegate {
 
     /**
      * Initialize the floating toolbar.
+     *
      * @param context
-     * @param floatingToolbarLayout
+     * @param floatingToolbarLayout may be null on layouts that don't include the floating toolbar
      */
     public void initFloatingToolbar(@NonNull Context context,
-            @NonNull FloatingToolbarLayout floatingToolbarLayout) {
+            @Nullable FloatingToolbarLayout floatingToolbarLayout) {
         mFloatingToolbarLayout = floatingToolbarLayout;
     }
 
@@ -383,7 +526,14 @@ public class CollapsingToolbarDelegate {
             if (mIsExpressiveTheme) {
                 actionBar.setHomeAsUpIndicator(R.drawable.settingslib_expressive_icon_back);
             }
-            actionBar.setDisplayShowTitleEnabled(true);
+            actionBar.setDisplayShowTitleEnabled(!mIsExpressiveTheme);
+        }
+
+        if (mIsExpressiveTheme && mCollapsingToolbarLayout != null) {
+            View buttonsContainer = mCollapsingToolbarLayout.findViewById(R.id.toolbar_buttons_container);
+            if (buttonsContainer != null) {
+                initToolbarButtonsContainer(buttonsContainer);
+            }
         }
     }
 
@@ -400,8 +550,67 @@ public class CollapsingToolbarDelegate {
             if (mIsExpressiveTheme) {
                 actionBar.setHomeAsUpIndicator(R.drawable.settingslib_expressive_icon_back);
             }
-            actionBar.setDisplayShowTitleEnabled(true);
+            actionBar.setDisplayShowTitleEnabled(!mIsExpressiveTheme);
         }
+
+        if (mIsExpressiveTheme && mCollapsingToolbarLayout != null) {
+            View buttonsContainer = mCollapsingToolbarLayout.findViewById(R.id.toolbar_buttons_container);
+            if (buttonsContainer != null) {
+                initToolbarButtonsContainer(buttonsContainer);
+            }
+        }
+    }
+
+    public void registerToolbarCollapseBehavior(@NonNull Activity activity) {
+        if (!(activity instanceof FragmentActivity)) {
+            return;
+        }
+        FragmentManager fragmentManager = ((FragmentActivity) activity).getSupportFragmentManager();
+        fragmentManager.registerFragmentLifecycleCallbacks(
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentViewCreated(@NonNull FragmentManager fm,
+                            @NonNull Fragment f, @NonNull View v,
+                            @Nullable Bundle savedInstanceState) {
+                        super.onFragmentViewCreated(fm, f, v, savedInstanceState);
+                        if (!SettingsThemeHelper.isExpressiveTheme(activity)) {
+                            return;
+                        }
+                        if (fm.getBackStackEntryCount() > 0) {
+                            AppBarLayout appBarLayout = getAppBarLayout();
+                            if (appBarLayout != null) {
+                                appBarLayout.post(() -> appBarLayout.setExpanded(false, true));
+                            } else {
+                                Log.e(TAG, "AppBarLayout is null, can't collapse toolbar.");
+                            }
+                        }
+                    }
+                }, false);
+    }
+
+    private void autoSetCollapsingToolbarLayoutScrolling(AppBarLayout appBarLayout) {
+        if (appBarLayout == null) {
+            return;
+        }
+        final CoordinatorLayout.LayoutParams params =
+                (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
+        final AppBarLayout.Behavior behavior = new IgnoreNonTouchScrollBehavior();
+        behavior.setDragCallback(
+                new AppBarLayout.Behavior.DragCallback() {
+                    @Override
+                    public boolean canDrag(@NonNull AppBarLayout appBarLayout) {
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
+                                || SettingsThemeHelper.isExpressiveTheme(
+                                        appBarLayout.getContext())) {
+                            return false;
+                        } else {
+                            return appBarLayout.getResources()
+                                    .getConfiguration().orientation
+                                    == Configuration.ORIENTATION_LANDSCAPE;
+                        }
+                    }
+                });
+        params.setBehavior(behavior);
     }
 
     /**
@@ -435,7 +644,8 @@ public class CollapsingToolbarDelegate {
     }
 
     /** Set the content description to the primary button */
-    public void setPrimaryButtonContentDescription(@Nullable CharSequence contentDescription) {
+    public void setPrimaryButtonContentDescription(
+            @Nullable CharSequence contentDescription) {
         if (mPrimaryButton == null) {
             return;
         }
@@ -473,7 +683,8 @@ public class CollapsingToolbarDelegate {
     }
 
     /** Set the content description to the secondary button */
-    public void setSecondaryButtonContentDescription(@Nullable CharSequence contentDescription) {
+    public void setSecondaryButtonContentDescription(
+            @Nullable CharSequence contentDescription) {
         if (mSecondaryButton == null) {
             return;
         }
@@ -511,7 +722,8 @@ public class CollapsingToolbarDelegate {
         if (mActionButton == null || mActionIconOnlyButton == null) {
             return;
         }
-        mActionButton.setIcon(context.getResources().getDrawable(drawableRes, context.getTheme()));
+        mActionButton.setIcon(
+                context.getResources().getDrawable(drawableRes, context.getTheme()));
         mActionIconOnlyButton.setIcon(
                 context.getResources().getDrawable(drawableRes, context.getTheme()));
     }
@@ -549,68 +761,13 @@ public class CollapsingToolbarDelegate {
     }
 
     /** Set the content description to the action button */
-    public void setActionButtonContentDescription(@Nullable CharSequence contentDescription) {
+    public void setActionButtonContentDescription(
+            @Nullable CharSequence contentDescription) {
         if (mActionButton == null || mActionIconOnlyButton == null) {
             return;
         }
         mActionButton.setContentDescription(contentDescription);
         mActionIconOnlyButton.setContentDescription(contentDescription);
-    }
-
-    /**
-     * Set the state of CollapsingToolbar to collapsed when multiple fragments share a single
-     * FragmentManager within an activity.
-     */
-    public void registerToolbarCollapseBehavior(@NonNull Activity activity) {
-        if (!(activity instanceof FragmentActivity)) {
-            return;
-        }
-        FragmentManager fragmentManager = ((FragmentActivity) activity).getSupportFragmentManager();
-        fragmentManager.registerFragmentLifecycleCallbacks(
-            new FragmentManager.FragmentLifecycleCallbacks() {
-                @Override
-                public void onFragmentViewCreated(@NonNull FragmentManager fm, @NonNull Fragment f,
-                        @NonNull View v, @Nullable Bundle savedInstanceState) {
-                    super.onFragmentViewCreated(fm, f, v, savedInstanceState);
-                    if (!SettingsThemeHelper.isExpressiveTheme(activity)) {
-                        return;
-                    }
-                    // Check if multiple fragments use the same activity
-                    if (fm.getBackStackEntryCount() > 0) {
-                        AppBarLayout appBarLayout = getAppBarLayout();
-                        if (appBarLayout != null) {
-                            appBarLayout.post(() -> appBarLayout.setExpanded(false, true));
-                        } else {
-                            Log.e(TAG, "AppBarLayout is null, can't collapse toolbar.");
-                        }
-                    }
-                }
-            }, false);
-    }
-
-    private void autoSetCollapsingToolbarLayoutScrolling(AppBarLayout appBarLayout) {
-        if (appBarLayout == null) {
-            return;
-        }
-        final CoordinatorLayout.LayoutParams params =
-                (CoordinatorLayout.LayoutParams) appBarLayout.getLayoutParams();
-        final AppBarLayout.Behavior behavior = new IgnoreNonTouchScrollBehavior();
-        behavior.setDragCallback(
-                new AppBarLayout.Behavior.DragCallback() {
-                    @Override
-                    public boolean canDrag(@NonNull AppBarLayout appBarLayout) {
-                        // Header can be scrolling while device in landscape mode and SDK > 33
-                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU
-                                || SettingsThemeHelper.isExpressiveTheme(
-                                appBarLayout.getContext())) {
-                            return false;
-                        } else {
-                            return appBarLayout.getResources().getConfiguration().orientation
-                                    == Configuration.ORIENTATION_LANDSCAPE;
-                        }
-                    }
-                });
-        params.setBehavior(behavior);
     }
 
     private void updateActionButton(int visibility) {

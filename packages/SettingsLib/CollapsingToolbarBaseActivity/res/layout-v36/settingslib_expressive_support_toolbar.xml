@@ -26,7 +26,5 @@
     android:transitionName="shared_element_view"
     android:nextFocusForward="@+id/content_frame"
     android:touchscreenBlocksFocus="false"
-    app:layout_collapseMode="pin">
-
-    <include layout="@layout/settingslib_expressive_toolbar_buttons"/>
-</androidx.appcompat.widget.Toolbar>
+    android:clipChildren="false"
+    app:layout_collapseMode="pin" />

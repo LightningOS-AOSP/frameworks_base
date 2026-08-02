@@ -23,6 +23,7 @@
     android:paddingStart="@dimen/settingslib_expressive_space_extrasmall6"
     android:layout_marginEnd="@dimen/settingslib_expressive_space_small4"
     android:layout_gravity="end"
+    app:layout_collapseMode="pin"
     android:visibility="gone">
 
     <com.google.android.material.button.MaterialButton

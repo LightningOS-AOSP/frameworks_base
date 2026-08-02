@@ -26,6 +26,18 @@ import androidx.core.view.ViewCompat;
 
 import com.google.android.material.appbar.AppBarLayout;
 
+/**
+ * A custom {@link AppBarLayout.Behavior} that filters nested-scroll events so that:
+ * <ul>
+ *   <li>Only user-initiated touch scrolls ({@link ViewCompat#TYPE_TOUCH}) drive the AppBar
+ *       expansion or collapse during normal scrolling. This prevents flings triggered by
+ *       keyboard/IME or accessibility services from unexpectedly collapsing the header.</li>
+ *   <li>Programmatic calls to {@link AppBarLayout#setExpanded(boolean, boolean)} work correctly
+ *       because they use {@code TYPE_NON_TOUCH} internally; we allow those through by not
+ *       blocking the {@code onNestedPreScroll} path used by the programmatic API.</li>
+ * </ul>
+ */
+
 public class IgnoreNonTouchScrollBehavior extends AppBarLayout.Behavior {
 
     public IgnoreNonTouchScrollBehavior() {
