@@ -112,7 +112,6 @@ class MediaViewController @Inject constructor(
 
     init {
         INSTANCE = this
-
         context.contentResolver.registerContentObserver(
             Settings.System.getUriFor(Settings.System.LS_MEDIA_ART_ENABLED),
             false,
