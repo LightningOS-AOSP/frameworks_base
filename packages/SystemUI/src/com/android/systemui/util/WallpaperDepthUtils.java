@@ -52,7 +52,6 @@ public class WallpaperDepthUtils {
 
     private static WallpaperDepthUtils instance;
     private FrameLayout mLockScreenSubject;
-    private Drawable mDimmingOverlay;
 
     private final Context mContext;
     private final ScrimController mScrimController;
@@ -301,8 +300,7 @@ public class WallpaperDepthUtils {
                 mWallpaperBitmap = resizedBitmap;
                 Drawable bitmapDrawable = new BitmapDrawable(mContext.getResources(), mWallpaperBitmap);
                 bitmapDrawable.setAlpha(255);
-                mDimmingOverlay = bitmapDrawable.getConstantState().newDrawable().mutate();
-                mDimmingOverlay.setTint(Color.BLACK);
+                return bitmapDrawable;
                 return new LayerDrawable(new Drawable[]{bitmapDrawable, mDimmingOverlay});
             } catch (OutOfMemoryError e) {
                 Log.e("LoadWallpaperTask", "Out of memory error", e);
@@ -323,7 +321,6 @@ public class WallpaperDepthUtils {
             if (drawable != null) {
                 mLockScreenSubject.setBackground(drawable);
                 mLockScreenSubject.getBackground().setAlpha(mDWallOpacity);
-                mDimmingOverlay.setAlpha(Math.round(mScrimController.getScrimBehindAlpha() * 240));
                 Log.d("LoadWallpaperTask", "Subject Loaded!");
             } else {
                 updateDepthWallpaperVisibility();
