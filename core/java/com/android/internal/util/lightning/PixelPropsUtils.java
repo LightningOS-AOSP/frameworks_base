@@ -41,7 +41,6 @@ import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.R;
-
 import com.android.internal.util.lightning.PixelDeviceRepository;
 import com.android.internal.util.lightning.Utils;
 
@@ -89,8 +88,6 @@ public final class PixelPropsUtils {
     );
 
     private static final Map<String, Object> propsToChangeGeneric;
-    private static final Map<String, Object> propsToChangeRecentPixel;
-    private static final Map<String, Object> propsToChangePixelTablet;
     private static final Map<String, ArrayList<String>> propsToKeep;
 
     // Pixel device codename ("mustang" = Pixel 10 Pro XL) used as the GMS spoof target
@@ -112,40 +109,8 @@ public final class PixelPropsUtils {
     private static final Pattern SUPPORTED_PIXEL_PATTERN =
             Pattern.compile("^Pixel ([3-9]|[1-9][0-9])([a-zA-Z ].*)?$");
 
-    // Default target packages — used as fallback when pi_pp_targets not yet written
-    private static final Set<String> DEFAULT_PP_TARGETS = new HashSet<>(Arrays.asList(
-            "com.amazon.avod.thirdpartyclient",
-            "com.android.chrome",
-            "com.breel.wallpapers20",
-            "com.disney.disneyplus",
-            "com.google.android.aicore",
-            "com.google.android.apps.accessibility.magnifier",
-            "com.google.android.apps.aiwallpapers",
-            "com.google.android.apps.bard",
-            "com.google.android.apps.customization.pixel",
-            "com.google.android.apps.emojiwallpaper",
-            "com.google.android.apps.pixel.agent",
-            "com.google.android.apps.pixel.creativeassistant",
-            "com.google.android.apps.pixel.nowplaying",
-            "com.google.android.apps.pixel.psi",
-            "com.google.android.apps.pixel.subzero",
-            "com.google.android.apps.pixel.support",
-            "com.google.android.apps.privacy.wildlife",
-            "com.google.android.apps.subscriptions.red",
-            "com.google.android.apps.wallpaper",
-            "com.google.android.apps.wallpaper.pixel",
-            "com.google.android.apps.weather",
-            "com.google.android.googlequicksearchbox",
-            "com.google.android.pcs",
-            "com.google.android.wallpaper.effects",
-            "com.google.pixel.livewallpaper",
-            "com.microsoft.android.smsorganizer",
-            "com.nhs.online.nhsonline",
-            "com.nothing.smartcenter",
-            "com.realme.link",
-            "in.startv.hotstar",
-            "jp.id_credit_sp2.android"
-    ));
+    // DEFAULT_PP_TARGETS moved to PixelDeviceRepository.DEFAULT_PP_TARGETS — single
+    // source of truth shared with PixelPropsSettings.
 
     private static final Set<String> customGoogleCameraPackages = new HashSet<>(Arrays.asList(
             "com.google.android.MTCL83",
@@ -156,7 +121,6 @@ public final class PixelPropsUtils {
     private static volatile boolean sIsExcluded;
     private static volatile String sProcessName;
 
-    private static final boolean sIsCustomForkBuild = detectCustomFork();
     private static final boolean sIsMainlineDevice = detectMainlinePixelDevice();
 
     private static volatile boolean sPhotosSpoofEnabled = true;
@@ -166,55 +130,12 @@ public final class PixelPropsUtils {
     private static volatile Set<String> sPpTargets = null;
     private static volatile String sPpModel = null;
 
-    private static boolean detectCustomFork() {
-        char[] k = new char[]{'d','e','v','o','l','u','t','i','o','n'};
-        String needle = new String(k);
-
-        String[] props = {
-            SystemProperties.get("ro.build.display.id", ""),
-            SystemProperties.get("ro.modversion", ""),
-            SystemProperties.get("ro.lightning.version", ""),
-            SystemProperties.get("ro.build.flavor", "")
-        };
-
-        for (String p : props) {
-            if (p != null && p.toLowerCase().contains(needle)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isCustomForkBuild() {
-        return sIsCustomForkBuild;
-    }
-
     static {
         propsToKeep = new HashMap<>();
         propsToKeep.put(PACKAGE_SI, new ArrayList<>(Collections.singletonList("FINGERPRINT")));
         propsToChangeGeneric = new HashMap<>();
         propsToChangeGeneric.put("TYPE", "user");
         propsToChangeGeneric.put("TAGS", "release-keys");
-        propsToChangeRecentPixel = new HashMap<>();
-        propsToChangeRecentPixel.put("BRAND", "google");
-        propsToChangeRecentPixel.put("BOARD", "mustang");
-        propsToChangeRecentPixel.put("MANUFACTURER", "Google");
-        propsToChangeRecentPixel.put("DEVICE", "mustang");
-        propsToChangeRecentPixel.put("PRODUCT", "mustang");
-        propsToChangeRecentPixel.put("HARDWARE", "mustang");
-        propsToChangeRecentPixel.put("MODEL", "Pixel 10 Pro XL");
-        propsToChangeRecentPixel.put("ID", "CP2A.260605.012");
-        propsToChangeRecentPixel.put("FINGERPRINT", "google/mustang/mustang:17/CP2A.260605.012/15430684:user/release-keys");
-        propsToChangePixelTablet = new HashMap<>();
-        propsToChangePixelTablet.put("BRAND", "google");
-        propsToChangePixelTablet.put("BOARD", "tangorpro");
-        propsToChangePixelTablet.put("MANUFACTURER", "Google");
-        propsToChangePixelTablet.put("DEVICE", "tangorpro");
-        propsToChangePixelTablet.put("PRODUCT", "tangorpro");
-        propsToChangePixelTablet.put("HARDWARE", "tangorpro");
-        propsToChangePixelTablet.put("MODEL", "Pixel Tablet");
-        propsToChangePixelTablet.put("ID", "CP2A.260605.012");
-        propsToChangePixelTablet.put("FINGERPRINT", "google/tangorpro/tangorpro:17/CP2A.260605.012/15430684:user/release-keys");
     }
 
     public static String getBuildID(String fingerprint) {
@@ -253,7 +174,7 @@ public final class PixelPropsUtils {
                         cr, Settings.Secure.PI_PP_SPOOF, 1) == 1;
                 final String rawTargets = Settings.Secure.getString(cr, PI_PP_TARGETS_KEY);
                 sPpTargets = (rawTargets == null || rawTargets.isEmpty())
-                        ? new ArraySet<>(DEFAULT_PP_TARGETS)
+                        ? new ArraySet<>(PixelDeviceRepository.DEFAULT_PP_TARGETS)
                         : new ArraySet<>(Arrays.asList(rawTargets.split(",")));
                 sPpModel = Settings.Secure.getString(cr, PI_PP_MODEL_KEY);
             } catch (Throwable t) {
@@ -303,11 +224,6 @@ public final class PixelPropsUtils {
     }
 
     public static void setProps(Context context) {
-        if (sIsCustomForkBuild) {
-            if (DEBUG) Log.d(TAG, "Custom fork detected → disabling prop spoofing");
-            return;
-        }
-
         if (Process.isIsolated()) {
             if (DEBUG) Log.d(TAG, "Skipping setProps in isolated process");
             return;
@@ -333,7 +249,7 @@ public final class PixelPropsUtils {
         final Set<String> ppTargets;
         if (sPpTargets == null) {
             // Pre-assign sentinel so a partial failure doesn't leave sPpTargets null
-            sPpTargets = new ArraySet<>(DEFAULT_PP_TARGETS);
+            sPpTargets = new ArraySet<>(PixelDeviceRepository.DEFAULT_PP_TARGETS);
             try {
                 final android.content.ContentResolver cr = context.getContentResolver();
                 final String raw = Settings.Secure.getString(cr, PI_PP_TARGETS_KEY);
@@ -360,11 +276,13 @@ public final class PixelPropsUtils {
                 // GMS is pinned to the Mosey codename so Quick Share Phenotype gates
                 final boolean moseySpoofEnabled = sPpTargets != null
                         && sPpTargets.contains("com.google.android.mosey");
+                final String defaultCodename = isTablet
+                        ? "tangorpro" : PixelDeviceRepository.getDefaultPhoneCodename();
                 final String codename = (packageName.equals(PACKAGE_GMS) && moseySpoofEnabled)
                         ? MOSEY_PIXEL_CODENAME
                         : (sPpModel != null && !sPpModel.isEmpty()
                                 ? sPpModel
-                                : (isTablet ? "tangorpro" : "mustang"));
+                                : defaultCodename);
                 final PixelDeviceRepository.PixelProfile profile =
                         PixelDeviceRepository.getProfileByCodename(
                                 context, codename, isTablet);
@@ -387,8 +305,27 @@ public final class PixelPropsUtils {
             }
 
             if (resolvedProps == null) {
-                // Full fallback to hardcoded map
-                resolvedProps = isTablet ? propsToChangePixelTablet : propsToChangeRecentPixel;
+                // getProfileByCodename already falls back through cache → FALLBACK_PROFILES
+                // internally, so this only triggers on a hard exception above.
+                final PixelDeviceRepository.PixelProfile fallback =
+                        PixelDeviceRepository.getProfileByCodename(
+                                context,
+                                isTablet ? "tangorpro" : PixelDeviceRepository.getDefaultPhoneCodename(),
+                                isTablet);
+                resolvedProps = new HashMap<>();
+                if (fallback != null) {
+                    resolvedProps.put("BRAND",       "google");
+                    resolvedProps.put("MANUFACTURER","Google");
+                    resolvedProps.put("BOARD",       fallback.getDevice());
+                    resolvedProps.put("DEVICE",      fallback.getDevice());
+                    resolvedProps.put("PRODUCT",     fallback.getProduct());
+                    resolvedProps.put("HARDWARE",    fallback.getDevice());
+                    resolvedProps.put("MODEL",       fallback.getModel());
+                    resolvedProps.put("ID",          fallback.getBuildId());
+                    resolvedProps.put("TYPE",        "user");
+                    resolvedProps.put("TAGS",        "release-keys");
+                    resolvedProps.put("FINGERPRINT", fallback.getFingerprint());
+                }
             }
 
             propsToChange.putAll(resolvedProps);
