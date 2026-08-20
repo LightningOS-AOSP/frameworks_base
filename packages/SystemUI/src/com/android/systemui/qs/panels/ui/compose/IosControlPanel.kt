@@ -43,8 +43,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,10 +83,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.compose.animation.Expandable
+import com.android.compose.animation.rememberExpandableController
+import com.android.compose.theme.LocalAndroidColorScheme
+import com.android.systemui.animation.Expandable
 
 @Composable
 fun IosControlPanel(
@@ -307,33 +314,69 @@ private fun IosConnectivityTilesPage(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun IosInternetTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
+    val wifiManager = remember {
+        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+    }
+
+    var connectedSsid by remember {
+        mutableStateOf(
+            wifiManager?.connectionInfo?.ssid
+                ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+                ?.removeSurrounding("\"")
+        )
+    }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                val action = intent?.action
+                if (action == WifiManager.NETWORK_STATE_CHANGED_ACTION ||
+                    action == WifiManager.WIFI_STATE_CHANGED_ACTION) {
+                    val raw = wifiManager?.connectionInfo?.ssid
+                    connectedSsid = raw
+                        ?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+                        ?.removeSurrounding("\"")
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
+            addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+        }
+        context.registerReceiver(receiver, filter)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
     if (tileVM != null) {
         DisposableEffect(tileVM) {
             val token = Any()
             tileVM.startListening(token)
             onDispose { tileVM.stopListening(token) }
         }
-        
+
         val state by tileVM.state.collectAsStateWithLifecycle(initialValue = tileVM.currentState)
         val isActive = state.state == Tile.STATE_ACTIVE
+
+        val sublabel = state.secondaryLabel
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?: if (isActive) (connectedSsid ?: "On") else "Off"
+
         IosConnectivityTile(
             icon = if (isActive) Icons.Filled.Wifi else Icons.Filled.WifiOff,
             label = state.label?.toString() ?: "Internet",
-            sublabel = state.secondaryLabel?.toString() ?: "",
+            sublabel = sublabel,
             isActive = isActive,
             modifier = modifier,
-            onClick = {
-                tileVM.mainClick(null)
-            }
+            onClick = { expandable -> tileVM.mainClick(expandable) },
+            onLongClick = { expandable -> tileVM.settingsClick(expandable) },
         )
         return
-    }
-
-    val context = LocalContext.current
-    val wifiManager = remember {
-        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
     }
 
     var wifiEnabled by remember { mutableStateOf(wifiManager?.isWifiEnabled == true) }
@@ -342,12 +385,12 @@ fun IosInternetTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifier
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 if (intent?.action == WifiManager.WIFI_STATE_CHANGED_ACTION) {
-                    val state = intent.getIntExtra(
+                    val s = intent.getIntExtra(
                         WifiManager.EXTRA_WIFI_STATE,
                         WifiManager.WIFI_STATE_UNKNOWN,
                     )
-                    wifiEnabled = state == WifiManager.WIFI_STATE_ENABLED ||
-                                  state == WifiManager.WIFI_STATE_ENABLING
+                    wifiEnabled = s == WifiManager.WIFI_STATE_ENABLED ||
+                                  s == WifiManager.WIFI_STATE_ENABLING
                 }
             }
         }
@@ -356,12 +399,12 @@ fun IosInternetTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifier
     }
 
     IosConnectivityTile(
-        label    = "Internet",
-        sublabel = if (wifiEnabled) "Wi‑Fi" else "Off",
-        icon     = if (wifiEnabled) Icons.Filled.Wifi else Icons.Filled.WifiOff,
-        isActive = wifiEnabled,
-        modifier = modifier,
-        onClick  = {
+        label      = "Internet",
+        sublabel   = if (wifiEnabled) (connectedSsid ?: "Wi\u2011Fi") else "Off",
+        icon       = if (wifiEnabled) Icons.Filled.Wifi else Icons.Filled.WifiOff,
+        isActive   = wifiEnabled,
+        modifier   = modifier,
+        onClick    = { _ ->
             val newState = !wifiEnabled
             wifiEnabled = newState
             try {
@@ -369,11 +412,52 @@ fun IosInternetTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifier
                 wifiManager?.setWifiEnabled(newState)
             } catch (_: Exception) {}
         },
+        onLongClick = null,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun IosBluetoothTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val btAdapter = remember {
+        (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+    }
+
+    var connectedBtDevice by remember {
+        mutableStateOf(
+            try {
+                btAdapter?.bondedDevices
+                    ?.firstOrNull { it.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED }
+                    ?.name
+            } catch (_: Exception) { null }
+        )
+    }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                val action = intent?.action
+                if (action == BluetoothAdapter.ACTION_STATE_CHANGED ||
+                    action == android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED ||
+                    action == android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED) {
+                    connectedBtDevice = try {
+                        btAdapter?.bondedDevices
+                            ?.firstOrNull { it.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED }
+                            ?.name
+                    } catch (_: Exception) { null }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
+        }
+        context.registerReceiver(receiver, filter)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
     if (tileVM != null) {
         DisposableEffect(tileVM) {
             val token = Any()
@@ -383,22 +467,22 @@ fun IosBluetoothTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifie
 
         val state by tileVM.state.collectAsStateWithLifecycle(initialValue = tileVM.currentState)
         val isActive = state.state == Tile.STATE_ACTIVE
+
+        val sublabel = state.secondaryLabel
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?: if (isActive) (connectedBtDevice ?: "On") else "Off"
+
         IosConnectivityTile(
             icon = if (isActive) Icons.Filled.Bluetooth else Icons.Filled.BluetoothDisabled,
             label = state.label?.toString() ?: "Bluetooth",
-            sublabel = state.secondaryLabel?.toString() ?: "",
+            sublabel = sublabel,
             isActive = isActive,
             modifier = modifier,
-            onClick = {
-                tileVM.mainClick(null)
-            }
+            onClick = { expandable -> tileVM.mainClick(expandable) },
+            onLongClick = { expandable -> tileVM.settingsClick(expandable) },
         )
         return
-    }
-
-    val context  = LocalContext.current
-    val btAdapter = remember {
-        (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
     }
 
     var btEnabled by remember { mutableStateOf(btAdapter?.isEnabled == true) }
@@ -407,12 +491,12 @@ fun IosBluetoothTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifie
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
-                    val state = intent.getIntExtra(
+                    val s = intent.getIntExtra(
                         BluetoothAdapter.EXTRA_STATE,
                         BluetoothAdapter.ERROR,
                     )
-                    btEnabled = state == BluetoothAdapter.STATE_ON ||
-                                state == BluetoothAdapter.STATE_TURNING_ON
+                    btEnabled = s == BluetoothAdapter.STATE_ON ||
+                                s == BluetoothAdapter.STATE_TURNING_ON
                 }
             }
         }
@@ -421,12 +505,12 @@ fun IosBluetoothTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifie
     }
 
     IosConnectivityTile(
-        label    = "Bluetooth",
-        sublabel = if (btEnabled) "On" else "Off",
-        icon     = if (btEnabled) Icons.Filled.Bluetooth else Icons.Filled.BluetoothDisabled,
-        isActive = btEnabled,
-        modifier = modifier,
-        onClick  = {
+        label       = "Bluetooth",
+        sublabel    = if (btEnabled) (connectedBtDevice ?: "On") else "Off",
+        icon        = if (btEnabled) Icons.Filled.Bluetooth else Icons.Filled.BluetoothDisabled,
+        isActive    = btEnabled,
+        modifier    = modifier,
+        onClick     = { _ ->
             val newState = !btEnabled
             btEnabled = newState
             try {
@@ -434,102 +518,156 @@ fun IosBluetoothTile(tileVM: TileViewModel? = null, modifier: Modifier = Modifie
                 if (newState) btAdapter?.enable() else btAdapter?.disable()
             } catch (_: Exception) {}
         },
+        onLongClick = null,
     )
 }
 
+/**
+ * A single iOS-style connectivity tile (Wi-Fi / Bluetooth).
+ *
+ * Colors are intentionally aligned with AOSP QS [TileDefaults]:
+ *  - Active   bg : MaterialTheme.colorScheme.primary      (same as activeTileColors)
+ *  - Inactive bg : LocalAndroidColorScheme.surfaceEffect1  (same as inactiveTileColors)
+ *  - Icon tint  : onPrimary (active) / onSurface (inactive)
+ *  - Icon bg    : transparent (matches AOSP inactiveTileColors.iconBackground = Transparent)
+ */
+/**
+ * A single iOS-style connectivity tile (Wi-Fi / Bluetooth).
+ *
+ * Colors are intentionally aligned with AOSP QS [TileDefaults]:
+ *  - Active   bg : MaterialTheme.colorScheme.primary      (same as activeTileColors)
+ *  - Inactive bg : LocalAndroidColorScheme.surfaceEffect1  (same as inactiveTileColors)
+ *  - Icon tint  : onPrimary (active) / onSurface (inactive)
+ *  - Icon bg    : transparent (matches AOSP inactiveTileColors.iconBackground = Transparent)
+ *
+ * [onClick] receives a valid [Expandable] backed by the Compose layout, so
+ * calling [TileViewModel.mainClick] with it properly launches the Internet /
+ * Bluetooth dialog with the correct transition animation (same as AOSP tiles).
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun IosConnectivityTile(
-    label    : String,
-    sublabel : String,
-    icon     : ImageVector,
-    isActive : Boolean,
-    onClick  : () -> Unit,
-    modifier : Modifier = Modifier,
+    label       : String,
+    sublabel    : String,
+    icon        : ImageVector,
+    isActive    : Boolean,
+    onClick     : (Expandable) -> Unit,
+    onLongClick : ((Expandable) -> Unit)?,
+    modifier    : Modifier = Modifier,
 ) {
+    val aosp = LocalAndroidColorScheme.current
+    val activeBg   = MaterialTheme.colorScheme.primary
+    val inactiveBg = aosp.surfaceEffect1
+
     val bgColor by animateColorAsState(
-        targetValue      = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-        animationSpec    = tween(300),
-        label            = "TileBg_$label",
+        targetValue   = if (isActive) activeBg else inactiveBg,
+        animationSpec = tween(300),
+        label         = "TileBg_$label",
     )
-    val iconBgColor by animateColorAsState(
-        targetValue      = if (isActive) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
-        animationSpec    = tween(300),
-        label            = "TileIconBg_$label",
-    )
+
     val iconTint by animateColorAsState(
-        targetValue      = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-        animationSpec    = tween(300),
-        label            = "TileIconTint_$label",
+        targetValue   = if (isActive) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+        animationSpec = tween(300),
+        label         = "TileIconTint_$label",
     )
+
     val labelColor by animateColorAsState(
-        targetValue      = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-        animationSpec    = tween(300),
-        label            = "TileLabel_$label",
+        targetValue   = if (isActive) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+        animationSpec = tween(300),
+        label         = "TileLabel_$label",
     )
     val sublabelColor by animateColorAsState(
-        targetValue      = if (isActive) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-        animationSpec    = tween(300),
-        label            = "TileSublabel_$label",
+        targetValue   = if (isActive) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        animationSpec = tween(300),
+        label         = "TileSublabel_$label",
     )
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(32.dp))
-            .background(bgColor)
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 0.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+    val haptic = LocalHapticFeedback.current
+
+    val expandable = remember { Expandable(mutableSetOf()) }
+    val tileShape  = RoundedCornerShape(32.dp)
+    val controller = rememberExpandableController(
+        color = bgColor,
+        shape = tileShape,
+    )
+
+    Expandable(
+        expandable = expandable,
+        controller = controller,
+        modifier   = modifier,
+        useModifierBasedImplementation = true,
+    ) { registeredExpandable ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(tileShape)
+                .background(bgColor)
+                .combinedClickable(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        onClick(registeredExpandable)
+                    },
+                    onLongClick = onLongClick?.let { action ->
+                        {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            action(registeredExpandable)
+                        }
+                    },
+                )
+                .padding(horizontal = 16.dp, vertical = 0.dp),
+            contentAlignment = Alignment.CenterStart,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(iconBgColor),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
             ) {
-                Crossfade(
-                    targetState  = icon,
-                    animationSpec = tween(200),
-                    label        = "IconCrossfade_$label",
-                ) { ic ->
-                    Icon(
-                        imageVector     = ic,
-                        contentDescription = label,
-                        tint            = iconTint,
-                        modifier        = Modifier.size(22.dp),
+                Box(
+                    modifier         = Modifier.size(42.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Crossfade(
+                        targetState   = icon,
+                        animationSpec = tween(200),
+                        label         = "IconCrossfade_$label",
+                    ) { ic ->
+                        Icon(
+                            imageVector        = ic,
+                            contentDescription = label,
+                            tint               = iconTint,
+                            modifier           = Modifier.size(22.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                Column(
+                    modifier            = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text  = label,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize   = 14.sp,
+                            color      = labelColor,
+                        ),
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text  = sublabel,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            color    = sublabelColor,
+                        ),
+                        maxLines = 1,
                     )
                 }
-            }
-
-            Spacer(Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text  = label,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize   = 14.sp,
-                        color      = labelColor,
-                    ),
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text  = sublabel,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        color    = sublabelColor,
-                    ),
-                    maxLines = 1,
-                )
             }
         }
     }

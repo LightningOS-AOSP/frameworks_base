@@ -73,9 +73,12 @@ constructor(
 
     private val currentTiles by tilesInteractor.currentTiles.hydratedStateOf()
 
+    val allCurrentSizedTiles by derivedStateOf {
+        currentTiles.map { SizedTileImpl(TileViewModel(it.tile, it.spec, it.expandable), it.spec.width()) }
+    }
+
     val tileViewModels by derivedStateOf {
-        currentTiles
-            .map { SizedTileImpl(TileViewModel(it.tile, it.spec, it.expandable), it.spec.width()) }
+        allCurrentSizedTiles
             .let { splitInRowsSequence(it, columns).take(rows).toList().flatten() }
     }
 
