@@ -381,7 +381,6 @@ public class WallpaperDepthUtils {
                 ((FadeBottomDrawable) bitmapDrawable).setBottomInsetPx(dpToPx(mBottomInsetDp));
                 bitmapDrawable.setAlpha(255);
                 return bitmapDrawable;
-                return new LayerDrawable(new Drawable[]{bitmapDrawable, mDimmingOverlay});
             } catch (OutOfMemoryError e) {
                 Log.e("LoadWallpaperTask", "Out of memory error", e);
                 return null;

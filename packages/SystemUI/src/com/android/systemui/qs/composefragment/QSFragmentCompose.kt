@@ -25,8 +25,11 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Trace
 import android.os.UserHandle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -149,6 +152,7 @@ import com.android.systemui.qs.panels.shared.model.QSFragmentComposeClippingTabl
 import com.android.systemui.qs.panels.ui.compose.EditMode
 import com.android.systemui.qs.panels.ui.compose.QuickQuickSettings
 import com.android.systemui.qs.panels.ui.compose.TileGrid
+import com.android.systemui.qs.panels.ui.compose.IosControlPanel
 import com.android.systemui.qs.shared.ui.QuickSettings.Elements
 import com.android.systemui.qs.ui.composable.QuickSettingsShade
 import com.android.systemui.qs.ui.composable.QuickSettingsShade.systemGestureExclusionInShade
@@ -156,6 +160,8 @@ import com.android.systemui.qs.ui.composable.QuickSettingsTheme
 import com.android.systemui.res.R
 import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.statusbar.policy.ConfigurationController
+import androidx.compose.ui.zIndex
+import com.android.systemui.qs.panels.ui.viewmodel.TileViewModel
 import com.android.systemui.statusbar.policy.ConfigurationController.ConfigurationListener
 import com.android.systemui.util.LifecycleFragment
 import com.android.systemui.util.asIndenting
@@ -176,6 +182,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import lineageos.providers.LineageSettings
+
+val IosControlPanelElementKey = com.android.compose.animation.scene.ElementKey("IosControlPanel")
 
 @SuppressLint("ValidFragment")
 class QSFragmentCompose
@@ -739,7 +747,29 @@ constructor(
                     }
                 val Media =
                     @Composable {
-                        if (viewModel.qqsMediaVisible) {
+                        val cr = LocalContext.current.contentResolver
+                        var stockMediaEnabled by remember {
+                            mutableStateOf(
+                                Settings.System.getIntForUser(
+                                    cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
+                                ) == 1
+                            )
+                        }
+                        DisposableEffect(Unit) {
+                            val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                                override fun onChange(selfChange: Boolean) {
+                                    stockMediaEnabled = Settings.System.getIntForUser(
+                                        cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
+                                    ) == 1
+                                }
+                            }
+                            cr.registerContentObserver(
+                                Settings.System.getUriFor("qs_stock_media_player"), false, observer, UserHandle.USER_ALL
+                            )
+                            onDispose { cr.unregisterContentObserver(observer) }
+                        }
+
+                        if (stockMediaEnabled && viewModel.qqsMediaVisible) {
                             MediaObject(
                                 // In order to have stable constraints passed to the AndroidView
                                 // during expansion (available height changing due to squishiness),
@@ -778,12 +808,28 @@ constructor(
                                 )
                                 .padding(horizontal = qsHorizontalMargin())
                     ) {
-                        QuickQuickSettingsLayout(
-                            brightness = BrightnessSlider,
-                            tiles = Tiles,
-                            media = Media,
-                            mediaInRow = viewModel.qqsMediaInRow,
-                        )
+                    Column {
+                            val containerViewModel = viewModel.containerViewModel
+                            val internetTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "internet" }
+                            val btTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "bt" }
+
+                            Box(modifier = Modifier.padding(top = 10.dp, bottom = 16.dp)) {
+                                Element(IosControlPanelElementKey, modifier = Modifier.fillMaxWidth().zIndex(1f)) {
+                                    IosControlPanel(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        internetTile = internetTileVM,
+                                        btTile = btTileVM
+                                    )
+                                }
+                            }
+
+                            QuickQuickSettingsLayout(
+                                brightness = BrightnessSlider,
+                                tiles = Tiles,
+                                media = Media,
+                                mediaInRow = viewModel.qqsMediaInRow,
+                            )
+                        }
                     }
                 }
             }
@@ -844,6 +890,23 @@ constructor(
                         Spacer(
                             modifier = Modifier.height { qqsPadding + qsExtraPadding.roundToPx() }
                         )
+                        val internetTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "internet" }
+                        val btTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "bt" }
+
+                        Box(
+                            modifier = Modifier.padding(
+                                horizontal = qsHorizontalMargin(),
+                                vertical = 4.dp,
+                            )
+                        ) {
+                            Element(IosControlPanelElementKey, modifier = Modifier.fillMaxWidth().zIndex(1f)) {
+                                IosControlPanel(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    internetTile = internetTileVM,
+                                    btTile = btTileVM
+                                )
+                           }
+                        }
                         val BrightnessSlider: @Composable () -> Unit = {
                             Element(Elements.BrightnessSlider, modifier = modifier) {
                                 BrightnessSlider(viewModel, layoutState)
@@ -878,8 +941,31 @@ constructor(
                             }
                         val Media =
                             @Composable {
-                                if (viewModel.qsMediaVisible) {
+                                val cr = LocalContext.current.contentResolver
+                                var stockMediaEnabled by remember {
+                                    mutableStateOf(
+                                        Settings.System.getIntForUser(
+                                            cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
+                                        ) == 1
+                                    )
+                                }
+                                DisposableEffect(Unit) {
+                                    val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                                        override fun onChange(selfChange: Boolean) {
+                                            stockMediaEnabled = Settings.System.getIntForUser(
+                                                cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
+                                            ) == 1
+                                        }
+                                    }
+                                    cr.registerContentObserver(
+                                        Settings.System.getUriFor("qs_stock_media_player"), false, observer, UserHandle.USER_ALL
+                                    )
+                                    onDispose { cr.unregisterContentObserver(observer) }
+                                }
+
+                                if (stockMediaEnabled && viewModel.qsMediaVisible) {
                                     MediaObject(
+                                        modifier = Modifier.requiredHeightIn(max = Dp.Infinity),
                                         mediaHost = viewModel.qsMediaHost,
                                         mediaViewModelFactory = viewModel.mediaViewModelFactory,
                                         mediaPresentationStyle = MediaPresentationStyle.Default,
