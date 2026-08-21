@@ -751,16 +751,16 @@ constructor(
                         var stockMediaEnabled by remember {
                             mutableStateOf(
                                 Settings.System.getIntForUser(
-                                    cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
-                                ) == 1
+                                    cr, "qs_stock_media_player", 0, UserHandle.USER_CURRENT
+                                ) == 0
                             )
                         }
                         DisposableEffect(Unit) {
                             val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
                                 override fun onChange(selfChange: Boolean) {
                                     stockMediaEnabled = Settings.System.getIntForUser(
-                                        cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
-                                    ) == 1
+                                        cr, "qs_stock_media_player", 0, UserHandle.USER_CURRENT
+                                    ) == 0
                                 }
                             }
                             cr.registerContentObserver(
@@ -952,16 +952,16 @@ constructor(
                                 var stockMediaEnabled by remember {
                                     mutableStateOf(
                                         Settings.System.getIntForUser(
-                                            cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
-                                        ) == 1
+                                            cr, "qs_stock_media_player", 0, UserHandle.USER_CURRENT
+                                        ) == 0
                                     )
                                 }
                                 DisposableEffect(Unit) {
                                     val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
                                         override fun onChange(selfChange: Boolean) {
                                             stockMediaEnabled = Settings.System.getIntForUser(
-                                                cr, "qs_stock_media_player", 1, UserHandle.USER_CURRENT
-                                            ) == 1
+                                                cr, "qs_stock_media_player", 0, UserHandle.USER_CURRENT
+                                            ) == 0
                                         }
                                     }
                                     cr.registerContentObserver(
