@@ -33,7 +33,7 @@ import com.android.compose.animation.scene.ContentScope
 import com.android.systemui.qs.panels.ui.viewmodel.TileGridViewModel
 import com.android.systemui.qs.panels.ui.viewmodel.TileViewModel
 
-private val IOS_PANEL_HIDDEN_TILE_SPECS = setOf("internet", "bt")
+private val IOS_PANEL_HIDDEN_TILE_SPECS = setOf("internet", "wifi", "bt")
 
 /**
  * Displays a grid of tiles with an optional reveal animation.

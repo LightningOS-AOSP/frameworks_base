@@ -810,18 +810,22 @@ constructor(
                     ) {
                     Column {
                             val containerViewModel = viewModel.containerViewModel
-                            val internetTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "internet" }
-                            val btTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "bt" }
+                            val allTiles = containerViewModel.tileGridViewModel.tileViewModels
+                            val internetTileVM = allTiles.find { it.spec.spec == "internet" }
+                                ?: allTiles.find { it.spec.spec == "wifi" }
+                            val btTileVM = allTiles.find { it.spec.spec == "bt" }
 
-                            Box(modifier = Modifier.padding(top = 10.dp, bottom = 16.dp)) {
+                            QuickSettingsTheme {
+                            Box(modifier = Modifier.padding(horizontal = 0.dp)) {
                                 Element(IosControlPanelElementKey, modifier = Modifier.fillMaxWidth().zIndex(1f)) {
                                     IosControlPanel(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                                         internetTile = internetTileVM,
                                         btTile = btTileVM
                                     )
                                 }
                             }
+                        }
 
                             QuickQuickSettingsLayout(
                                 brightness = BrightnessSlider,
@@ -890,21 +894,24 @@ constructor(
                         Spacer(
                             modifier = Modifier.height { qqsPadding + qsExtraPadding.roundToPx() }
                         )
-                        val internetTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "internet" }
-                        val btTileVM = containerViewModel.tileGridViewModel.tileViewModels.find { it.spec.spec == "bt" }
+                        val allTiles = containerViewModel.tileGridViewModel.tileViewModels
+                        val internetTileVM = allTiles.find { it.spec.spec == "internet" }
+                            ?: allTiles.find { it.spec.spec == "wifi" }
+                        val btTileVM = allTiles.find { it.spec.spec == "bt" }
 
+                        QuickSettingsTheme {
                         Box(
                             modifier = Modifier.padding(
-                                horizontal = qsHorizontalMargin(),
-                                vertical = 4.dp,
+                                horizontal = qsHorizontalMargin()
                             )
                         ) {
                             Element(IosControlPanelElementKey, modifier = Modifier.fillMaxWidth().zIndex(1f)) {
                                 IosControlPanel(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                                     internetTile = internetTileVM,
                                     btTile = btTileVM
                                 )
+                            }
                            }
                         }
                         val BrightnessSlider: @Composable () -> Unit = {

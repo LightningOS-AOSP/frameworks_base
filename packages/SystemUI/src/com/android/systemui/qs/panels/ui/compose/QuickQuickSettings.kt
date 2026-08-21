@@ -83,7 +83,7 @@ fun ContentScope.QuickQuickSettings(
 
     val allSizedTiles = viewModel.tileViewModels
     val sizedTiles = if (iosPanelEnabled) {
-        val filtered = viewModel.allCurrentSizedTiles.filter { it.tile.spec.spec !in setOf("internet", "bt") }
+        val filtered = viewModel.allCurrentSizedTiles.filter { it.tile.spec.spec !in setOf("internet", "wifi", "bt") }
         com.android.systemui.qs.panels.shared.model.splitInRowsSequence(filtered, columns)
             .firstOrNull() ?: emptyList()
     } else {

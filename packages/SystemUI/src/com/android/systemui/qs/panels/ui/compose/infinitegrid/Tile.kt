@@ -458,7 +458,7 @@ fun LargeStaticTile(
     }
 }
 
-private fun Context.getTileIcon(icon: IconProvider): Icon {
+internal fun Context.getTileIcon(icon: IconProvider): Icon {
     return icon.icon?.let {
         if (it is QSTileImpl.ResourceIcon) {
             Icon.Resource(it.resId, null)
@@ -522,7 +522,7 @@ object TileMotionTestKeys {
     val Squishness = MotionTestValueKey<Float>("tile_squishiness")
 }
 
-private object TileDefaults {
+internal object TileDefaults {
     /** An active tile uses the active color as background */
     @Composable
     @ReadOnlyComposable
