@@ -92,7 +92,19 @@ constructor(
         addIconImageView()
         addTouchHandlingView()
 
+        addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateFingerprintDrawableBounds()
+        }
+
         tunerService.addTunable(this, UDFPS_ICON)
+    }
+
+    private fun updateFingerprintDrawableBounds() {
+        val w = if (bgView.width > 0) bgView.width else width
+        val h = if (bgView.height > 0) bgView.height else height
+        if (w > 0 && h > 0) {
+            fingerprintDrawable.setBounds(0, 0, w, h)
+        }
     }
 
     override fun onTuningChanged(key: String?, value: String?) {
@@ -102,6 +114,7 @@ constructor(
                 animatedIconDrawable = AnimatedStateListDrawable()
                 setupIconStates()
                 setupIconTransitions()
+                updateFingerprintDrawableBounds()
                 iconView.setImageDrawable(animatedIconDrawable) 
             }
             else -> return
@@ -162,7 +175,7 @@ constructor(
         )
         // FINGERPRINT
         if (customUdfpsIcon) {
-            fingerprintDrawable.setBounds(0, 0, bgView.width, bgView.height)
+            updateFingerprintDrawableBounds()
             animatedIconDrawable.addState(
                 getIconState(IconType.FINGERPRINT, false),
                 fingerprintDrawable,

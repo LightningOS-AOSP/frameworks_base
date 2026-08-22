@@ -103,7 +103,7 @@ object AlternateBouncerUdfpsViewBinder {
                         /* merge */ false,
                     )
                     fgIconView.imageTintList = ColorStateList.valueOf(fgViewModel.tint)
-                    if (fgIconView.drawable.current !is UdfpsIconDrawable) {
+                    if (fgViewModel.type != DeviceEntryIconView.IconType.FINGERPRINT) {
                         fgIconView.setPadding(
                             fgViewModel.padding,
                             fgViewModel.padding,

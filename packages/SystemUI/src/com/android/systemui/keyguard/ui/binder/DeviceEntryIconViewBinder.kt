@@ -299,7 +299,7 @@ object DeviceEntryIconViewBinder {
                             }
                             fgIconView.imageTintList =
                                 ColorStateList.valueOf(overrideColor?.toArgb() ?: viewModel.tint)
-                            if (fgIconView.drawable.current !is UdfpsIconDrawable) {
+                            if (viewModel.type != DeviceEntryIconView.IconType.FINGERPRINT) {
                                 fgIconView.setPadding(
                                     viewModel.padding,
                                     viewModel.padding,
