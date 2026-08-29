@@ -2273,6 +2273,12 @@ public final class SystemServer implements Dumpable {
             }
             t.traceEnd();
 
+            // CustomDeviceConfigService must run before services that read boot-time
+            // DeviceConfig flags.
+            t.traceBegin("StartCustomDeviceConfigService");
+            mSystemServiceManager.startService(CustomDeviceConfigService.class);
+            t.traceEnd();
+
             t.traceBegin("StartNetworkManagementService");
             try {
                 networkManagement = NetworkManagementService.create(context);
@@ -2975,11 +2981,6 @@ public final class SystemServer implements Dumpable {
                 mSystemServiceManager.startService(BackgroundInstallControlService.class);
                 t.traceEnd();
             }
-
-            // CustomDeviceConfigService
-            t.traceBegin("StartCustomDeviceConfigService");
-            mSystemServiceManager.startService(CustomDeviceConfigService.class);
-            t.traceEnd();
         }
 
         t.traceBegin("StartMediaProjectionManager");
