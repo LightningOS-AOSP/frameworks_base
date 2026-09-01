@@ -171,6 +171,8 @@ import com.android.server.wm.ActivityTaskManagerInternal;
 import com.android.server.wm.AxSandboxService;
 import com.android.server.wm.IAxSandboxService;
 
+import org.rising.server.QuickSwitchService;
+
 import libcore.util.EmptyArray;
 
 import java.io.BufferedOutputStream;
@@ -1164,6 +1166,8 @@ public class ComputerEngine implements Computer {
 
     public final ApplicationInfo getApplicationInfo(String packageName,
             @PackageManager.ApplicationInfoFlagsBits long flags, int userId) {
+        if (QuickSwitchService.shouldHide(userId, packageName))
+            return null;
         if (isAppDetached(packageName)) return null;
         if (shouldHideFromCaller(Binder.getCallingUid(), packageName)) return null;
         return getApplicationInfoInternal(packageName, flags, Binder.getCallingUid(), userId);
@@ -1179,6 +1183,8 @@ public class ComputerEngine implements Computer {
             @PackageManager.ApplicationInfoFlagsBits long flags,
             int filterCallingUid, int userId) {
         if (!mUserManager.exists(userId)) return null;
+        if (QuickSwitchService.shouldHide(userId, packageName))
+            return null;
         if (isAppDetached(packageName)) return null;
         if (shouldHideFromCaller(filterCallingUid, packageName)) return null;
         flags = updateFlagsForApplication(flags, userId);
@@ -1196,14 +1202,15 @@ public class ComputerEngine implements Computer {
             int callingUid, Context context, int userId, PackageInfoList list) {
         List<PackageInfo> appList = new ArrayList<>(list.getList());
         appList.removeIf(info -> isAppDetached(info.packageName));
-        return new PackageInfoList(appList);
+        return QuickSwitchService.recreatePackageList(callingUid, context,
+                        userId, new PackageInfoList(appList));
     }
 
     public List<ApplicationInfo> recreateApplicationList(
             int callingUid, Context context, int userId, List<ApplicationInfo> list) {
         List<ApplicationInfo> appList = new ArrayList<>(list);
         appList.removeIf(info -> isAppDetached(info.packageName));
-        return appList;
+        return QuickSwitchService.recreateApplicationList(callingUid, context, userId, appList);
     }
 
     protected ApplicationInfo getApplicationInfoInternalBody(String packageName,
@@ -1884,6 +1891,8 @@ public class ComputerEngine implements Computer {
 
     public final PackageInfo getPackageInfo(String packageName,
             @PackageManager.PackageInfoFlagsBits long flags, int userId) {
+        if (QuickSwitchService.shouldHide(userId, packageName))
+            return null;
         if (isAppDetached(packageName)) return null;
         if (shouldHideFromCaller(Binder.getCallingUid(), packageName)) return null;
         return getPackageInfoInternal(packageName, PackageManager.VERSION_CODE_HIGHEST,

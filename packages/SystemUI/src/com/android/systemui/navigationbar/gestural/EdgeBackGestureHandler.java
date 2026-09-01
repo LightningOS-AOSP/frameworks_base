@@ -540,8 +540,9 @@ public class EdgeBackGestureHandler implements TunerService.Tunable {
         mDisplayBackGestureHandlerFactory = displayBackGestureHandlerFactory;
         mDesktopState = desktopState;
 
-        ComponentName recentsComponentName = ComponentName.unflattenFromString(
-                context.getString(com.android.internal.R.string.config_recentsComponentName));
+        int defaultLauncher = SystemProperties.getInt("persist.sys.default_launcher", 0);
+        String[] launcherComponents = context.getResources().getStringArray(com.android.internal.R.array.config_launcherComponents);
+        ComponentName recentsComponentName = ComponentName.unflattenFromString(launcherComponents[defaultLauncher]);
         if (recentsComponentName != null) {
             String recentsPackageName = recentsComponentName.getPackageName();
             PackageManager manager = context.getPackageManager();
