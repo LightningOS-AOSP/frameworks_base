@@ -36,7 +36,9 @@ import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.dagger.qualifiers.Background
 import com.android.systemui.media.NotificationMediaManager
+import com.android.systemui.media.controls.domain.pipeline.getNotificationActions
 import com.android.systemui.media.controls.shared.model.MediaAction
+import com.android.systemui.media.controls.shared.model.MediaButton
 import com.android.systemui.media.controls.shared.model.MediaData
 import com.android.systemui.media.remedia.data.model.MediaDataModel
 import com.android.systemui.media.remedia.data.repository.MediaRepositoryImpl
@@ -374,16 +376,22 @@ private fun MediaData.toMediaControlState(
             contentDescription =
                 ContentDescription.Loaded(listOfNotNull(artist, song).joinToString(" - ")),
         ) ?: appIcon
+    val notifActions = getNotificationActions(actions, activityStarter)
     val nextAction =
-        semanticActions?.actionsOrCustom?.firstOrNull { it.isNextAction() }
-            ?: actions.getOrNull(2)
+        semanticActions?.getActionById(R.id.actionNext)
+            ?: semanticActions?.actionsOrCustom?.firstOrNull { it.isNextAction() }
+            ?: notifActions.firstOrNull { it.isNextAction() }
+            ?: notifActions.getOrNull(2)
     val previousAction =
-        semanticActions?.actionsOrCustom?.firstOrNull { it.isPrevAction() }
-            ?: actions.getOrNull(0)
+        semanticActions?.getActionById(R.id.actionPrev)
+            ?: semanticActions?.actionsOrCustom?.firstOrNull { it.isPrevAction() }
+            ?: notifActions.firstOrNull { it.isPrevAction() }
+            ?: notifActions.getOrNull(0)
     val playOrPauseAction =
         semanticActions?.getActionById(R.id.actionPlayPause)
             ?: semanticActions?.actionsOrCustom?.firstOrNull { it.isPlayOrPauseAction() }
-            ?: actions.getOrNull(1)
+            ?: notifActions.firstOrNull { it.isPlayOrPauseAction() }
+            ?: notifActions.getOrNull(1)
 
     return MediaControlState(
         model =
@@ -407,6 +415,9 @@ private fun MediaData.toMediaControlState(
         token = token,
     )
 }
+
+private val MediaButton.actionsOrCustom: List<MediaAction>
+    get() = listOfNotNull(playOrPause, nextOrCustom, prevOrCustom, custom0, custom1)
 
 private fun MediaAction?.isPlayOrPauseAction(): Boolean {
     val description = this?.contentDescription ?: return false

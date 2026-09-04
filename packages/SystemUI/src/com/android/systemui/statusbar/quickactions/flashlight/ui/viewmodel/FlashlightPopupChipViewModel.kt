@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.quickactions.flashlight.ui.viewmodel
 
 import android.content.Context
+import androidx.compose.runtime.getValue
 import com.android.systemui.common.shared.model.ContentDescription
 import com.android.systemui.common.shared.model.Icon
 import com.android.systemui.dagger.qualifiers.Application
@@ -60,6 +61,10 @@ constructor(
                         }
 
                         override fun onFlashlightAvailabilityChanged(available: Boolean) {
+                            trySend(readFlashlightState())
+                        }
+
+                        override fun onFlashlightStrengthChanged(level: Int) {
                             trySend(readFlashlightState())
                         }
                     }

@@ -18,6 +18,7 @@ package com.android.systemui.statusbar.quickactions.stopwatch.ui.viewmodel
 
 import android.app.Notification
 import android.content.Context
+import androidx.compose.runtime.getValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Chronometer
