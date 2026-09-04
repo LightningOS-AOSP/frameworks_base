@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.quickactions.flashlight.ui.viewmodel
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import com.android.systemui.common.shared.model.ContentDescription
 import com.android.systemui.common.shared.model.Icon
@@ -35,6 +36,7 @@ import com.android.systemui.statusbar.quickactions.shared.model.QuickActionChipM
 import com.android.systemui.statusbar.quickactions.ui.compose.ChipColors
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
@@ -48,30 +50,44 @@ constructor(
     private val flashlightController: FlashlightController,
 ) : StatusBarPopupChipViewModel, HydratedActivatable() {
 
+    private var callbackScope: ProducerScope<FlashlightState>? = null
+
+    // Strongly referenced listener to avoid premature garbage collection by
+    // FlashlightControllerImpl's WeakReference storage.
+    private val flashlightListener =
+        object : FlashlightController.FlashlightListener {
+            override fun onFlashlightChanged(enabled: Boolean) {
+                Log.d(TAG, "FlashlightController state = $enabled")
+                callbackScope?.trySend(readFlashlightState(enabled = enabled))
+            }
+
+            override fun onFlashlightError() {
+                Log.d(TAG, "FlashlightController error")
+                callbackScope?.trySend(readFlashlightState())
+            }
+
+            override fun onFlashlightAvailabilityChanged(available: Boolean) {
+                Log.d(TAG, "Flashlight availability changed = $available")
+                callbackScope?.trySend(readFlashlightState())
+            }
+
+            override fun onFlashlightStrengthChanged(level: Int) {
+                callbackScope?.trySend(readFlashlightState())
+            }
+        }
+
     override val chip: QuickActionChipModel by
         callbackFlow {
-                val callback =
-                    object : FlashlightController.FlashlightListener {
-                        override fun onFlashlightChanged(enabled: Boolean) {
-                            trySend(readFlashlightState())
-                        }
-
-                        override fun onFlashlightError() {
-                            trySend(readFlashlightState())
-                        }
-
-                        override fun onFlashlightAvailabilityChanged(available: Boolean) {
-                            trySend(readFlashlightState())
-                        }
-
-                        override fun onFlashlightStrengthChanged(level: Int) {
-                            trySend(readFlashlightState())
-                        }
-                    }
-
-                flashlightController.addCallback(callback)
-                trySend(readFlashlightState())
-                awaitClose { flashlightController.removeCallback(callback) }
+                callbackScope = this
+                flashlightController.addCallback(flashlightListener)
+                val initialState = readFlashlightState()
+                Log.d(TAG, "Flashlight ViewModel active = true, initial state = $initialState")
+                trySend(initialState)
+                awaitClose {
+                    Log.d(TAG, "Flashlight ViewModel active = false")
+                    flashlightController.removeCallback(flashlightListener)
+                    callbackScope = null
+                }
             }
             .map(::toPopupChipModel)
             .combine(
@@ -80,6 +96,7 @@ constructor(
                     DynamicIslandFeatureSettings.FLASHLIGHT,
                 )
             ) { model, enabled ->
+                Log.d(TAG, "Flashlight feature enabled = $enabled, chip = ${model::class.simpleName}")
                 if (enabled) model else QuickActionChipModel.Hidden(QuickActionChipId.Flashlight)
             }
             .hydratedStateOf(
@@ -89,8 +106,14 @@ constructor(
 
     private fun toPopupChipModel(state: FlashlightState): QuickActionChipModel {
         if (!state.hasFlashlight || !state.isAvailable || !state.isEnabled) {
+            Log.d(
+                TAG,
+                "Flashlight PopupChipModel = Hidden (has=${state.hasFlashlight}, avail=${state.isAvailable}, enabled=${state.isEnabled})",
+            )
             return QuickActionChipModel.Hidden(QuickActionChipId.Flashlight)
         }
+
+        Log.d(TAG, "Flashlight PopupChipModel = PopupChip(enabled=${state.isEnabled})")
 
         val model =
             FlashlightPopupModel(
@@ -120,17 +143,21 @@ constructor(
         )
     }
 
-    private fun readFlashlightState(): FlashlightState {
+    private fun readFlashlightState(enabled: Boolean? = null): FlashlightState {
         return FlashlightState(
             hasFlashlight = flashlightController.hasFlashlight(),
             isAvailable = flashlightController.isAvailable(),
-            isEnabled = flashlightController.isEnabled(),
+            isEnabled = enabled ?: flashlightController.isEnabled(),
         )
     }
 
     @AssistedFactory
     interface Factory {
         fun create(): FlashlightPopupChipViewModel
+    }
+
+    companion object {
+        private const val TAG = "DynamicIslandDebug"
     }
 }
 

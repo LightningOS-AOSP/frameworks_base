@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.quickactions.ui.compose
 
+import android.util.Log
 import android.view.ViewTreeObserver
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -67,6 +68,7 @@ import com.android.systemui.statusbar.quickactions.popups.shared.DynamicIslandFe
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
+private const val TAG = "DynamicIslandDebug"
 /**
  * Displays a popup in the status bar area. The offset is calculated to draw the popup below the
  * status bar. When [chipBoundsInScreen] is provided, the popup grows out of the chip's on-screen
@@ -95,13 +97,22 @@ fun StatusBarPopup(
         onDismissRequest = { viewModel.hidePopup() },
         properties =
             PopupProperties(
-                focusable = true,
+                focusable = false,
                 dismissOnBackPress = true,
                 dismissOnClickOutside = true,
             ),
     ) {
         val popupView = LocalView.current
         var popupBoundsInScreen by remember { mutableStateOf<Rect?>(null) }
+
+        LaunchedEffect(viewModel.chipId, viewModel.popupContent, isVisible) {
+            if (isVisible) {
+                Log.d(
+                    TAG,
+                    "DynamicIsland: popup model = ${viewModel.popupContent::class.simpleName} for ${viewModel.chipId}",
+                )
+            }
+        }
 
         val transformOrigin by remember {
             derivedStateOf {
@@ -145,8 +156,8 @@ fun StatusBarPopup(
         val colorMode = rememberPopupColorMode()
         val skipMotionOnDismiss = colorMode == POPUP_COLOR_MODE_BLUR
 
-        LaunchedEffect(isVisible, popupBoundsInScreen != null) {
-            if (isVisible && popupBoundsInScreen != null) {
+        LaunchedEffect(isVisible) {
+            if (isVisible) {
                 scaleX.snapTo(initialScaleFromChip.x)
                 scaleY.snapTo(initialScaleFromChip.y)
                 alpha.snapTo(0f)
@@ -184,7 +195,7 @@ fun StatusBarPopup(
                     }
                     launch { alpha.animateTo(1f, animationSpec = tween(180)) }
                 }
-            } else if (!isVisible) {
+            } else {
                 if (skipMotionOnDismiss) {
                     coroutineScope {
                         launch {

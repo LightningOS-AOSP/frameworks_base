@@ -16,6 +16,7 @@
 
 package com.android.systemui.statusbar.quickactions.ui.compose
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -47,6 +48,7 @@ import com.android.systemui.statusbar.quickactions.shared.model.QuickActionChipM
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
+private const val TAG = "DynamicIslandDebug"
 /** Phone-only centered dynamic island that pages through active popup chips. */
 @Composable
 fun StatusBarDynamicIslandContainer(
@@ -85,10 +87,12 @@ fun StatusBarDynamicIslandContainer(
 
     LaunchedEffect(shownChip) {
         if (shownChip != null) {
+            Log.d(TAG, "DynamicIsland: shownChip = ${shownChip.chipId}")
             selectedChipId = shownChip.chipId
             popupAnchorChip = shownChip
             popupVisible = true
         } else if (popupAnchorChip != null) {
+            Log.d(TAG, "DynamicIsland: hiding popup")
             popupVisible = false
             delay(220)
             popupAnchorChip = null
@@ -102,6 +106,7 @@ fun StatusBarDynamicIslandContainer(
     }
 
     LaunchedEffect(selectedChip) {
+        Log.d(TAG, "DynamicIsland: selectedChip = ${selectedChip?.chipId}")
         if (selectedChip == null) {
             onIslandBoundsChanged(android.graphics.Rect())
         }
@@ -198,6 +203,7 @@ fun StatusBarDynamicIslandContainer(
                         )
                     },
                 onTap = {
+                    Log.d(TAG, "DynamicIsland: chip clicked: ${chip.chipId}")
                     if (chip.isPopupShown) chip.hidePopup() else chip.showPopup()
                 },
             )

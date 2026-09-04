@@ -18,6 +18,7 @@ package com.android.systemui.statusbar.quickactions.stopwatch.ui.viewmodel
 
 import android.app.Notification
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import android.view.View
 import android.view.ViewGroup
@@ -88,8 +89,12 @@ constructor(
                     }
 
                 notifCollection.addCollectionListener(listener)
+                Log.d(TAG, "Stopwatch ViewModel active = true")
                 trySend(Unit)
-                awaitClose { notifCollection.removeCollectionListener(listener) }
+                awaitClose {
+                    Log.d(TAG, "Stopwatch ViewModel active = false")
+                    notifCollection.removeCollectionListener(listener)
+                }
             }
             .map {
                 notifCollection.allNotifs
@@ -112,6 +117,7 @@ constructor(
                     DynamicIslandFeatureSettings.STOPWATCH,
                 )
             ) { model, enabled ->
+                Log.d(TAG, "Stopwatch feature enabled = $enabled, chip = ${model::class.simpleName}")
                 if (enabled) model else QuickActionChipModel.Hidden(QuickActionChipId.Stopwatch)
             }
             .hydratedStateOf(
@@ -123,6 +129,8 @@ constructor(
         if (model == null) {
             return QuickActionChipModel.Hidden(QuickActionChipId.Stopwatch)
         }
+
+        Log.d(TAG, "Stopwatch PopupChipModel = PopupChip(title=${model.title}, isRunning=${model.isRunning})")
 
         return QuickActionChipModel.PopupChip(
             chipId = QuickActionChipId.Stopwatch,
@@ -137,6 +145,10 @@ constructor(
     @AssistedFactory
     interface Factory {
         fun create(): StopwatchPopupChipViewModel
+    }
+
+    companion object {
+        private const val TAG = "DynamicIslandDebug"
     }
 }
 
@@ -164,6 +176,8 @@ private fun NotificationEntry.toStopwatchModel(
             contentDescription = ContentDescription.Resource(R.string.dynamic_island_stopwatch_title),
         )
 
+    Log.d("DynamicIslandDebug", "Stopwatch candidate accepted: pkg=${sbn.packageName}, isRunning=${isRunning(notification)}")
+
     return StopwatchPopupModel(
         icon = fallbackIcon,
         title = context.getString(R.string.dynamic_island_stopwatch_title),
@@ -175,7 +189,7 @@ private fun NotificationEntry.toStopwatchModel(
                 isRunning(notification) || chronometer.elapsedText.isBlank()
             },
         onOpen =
-            sbn.notification.contentIntent.toActivityLaunchAction(
+            sbn.notification.contentIntent?.toActivityLaunchAction(
                 activityStarter = activityStarter,
                 activityIntentHelper = activityIntentHelper,
                 lockscreenUserManager = lockscreenUserManager,
@@ -187,11 +201,9 @@ private fun NotificationEntry.toStopwatchModel(
 
 private fun NotificationEntry.isStopwatchCandidate(): Boolean {
     val notification = sbn.notification
-    if (notification.contentIntent == null) {
-        return false
-    }
-    if (notification.contentView == null) {
-        return false
+    if (Notification.CATEGORY_STOPWATCH.equals(notification.category)) {
+        val isCountDown = notification.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+        return !isCountDown
     }
 
     val searchText =
@@ -215,15 +227,21 @@ private fun NotificationEntry.isStopwatchCandidate(): Boolean {
             searchText.contains("deskclock") ||
             sbn.packageName.contains("clock", ignoreCase = true)
 
-    return hasClockHint
+    val showsChronometer = notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
+    val isCountDown = notification.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+
+    return (hasClockHint && showsChronometer && !isCountDown) ||
+        (hasClockHint && notification.contentView != null && !isCountDown)
 }
 
 private fun NotificationEntry.extractChronometerSnapshot(context: Context): ChronometerSnapshot? {
+    val notification = sbn.notification
     val packageContext =
         runCatching { context.createPackageContext(sbn.packageName, Context.CONTEXT_RESTRICTED) }
             .getOrDefault(context)
 
-    return sequenceOf(
+    val fromRemoteViews =
+        sequenceOf(
             sbn.notification.contentView,
             sbn.notification.bigContentView,
             sbn.notification.headsUpContentView,
@@ -244,6 +262,29 @@ private fun NotificationEntry.extractChronometerSnapshot(context: Context): Chro
             )
         }
         .firstOrNull()
+
+    if (fromRemoteViews != null) {
+        return fromRemoteViews
+    }
+
+    val showsChronometer = notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
+    val isStopwatchCategory = Notification.CATEGORY_STOPWATCH.equals(notification.category)
+    if (showsChronometer || isStopwatchCategory) {
+        val isCountDown = notification.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+        if (isCountDown) {
+            return null
+        }
+        val whenTime = if (notification.getWhen() != 0L) notification.getWhen() else sbn.postTime
+        val baseElapsedRealtimeMs =
+            whenTime + (android.os.SystemClock.elapsedRealtime() - System.currentTimeMillis())
+        return ChronometerSnapshot(
+            baseElapsedRealtimeMs = baseElapsedRealtimeMs,
+            isCountDown = false,
+            elapsedText = "",
+        )
+    }
+
+    return null
 }
 
 private fun View.findChronometer(): Chronometer? {

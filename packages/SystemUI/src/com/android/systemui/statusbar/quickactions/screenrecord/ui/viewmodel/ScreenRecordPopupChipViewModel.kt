@@ -17,6 +17,7 @@
 package com.android.systemui.statusbar.quickactions.screenrecord.ui.viewmodel
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import com.android.systemui.common.shared.model.ContentDescription
 import com.android.systemui.common.shared.model.Icon
@@ -39,6 +40,7 @@ import com.android.systemui.util.kotlin.pairwise
 import com.android.systemui.util.time.SystemClock
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -55,6 +57,7 @@ constructor(
     private val popupModel: Flow<ScreenRecordPopupModel?> =
         interactor.screenRecordState
             .map { state ->
+                Log.d(TAG, "ScreenRecord state = ${state::class.simpleName}")
                 when (state) {
                     is ScreenRecordChipModel.DoingNothing -> null
                     is ScreenRecordChipModel.Starting ->
@@ -89,6 +92,7 @@ constructor(
                     DynamicIslandFeatureSettings.SCREEN_RECORDING,
                 )
             ) { model, enabled ->
+                Log.d(TAG, "ScreenRecord feature enabled = $enabled, chip = ${model::class.simpleName}")
                 if (enabled) model else QuickActionChipModel.Hidden(QuickActionChipId.ScreenRecord)
             }
             .hydratedStateOf(
@@ -96,10 +100,21 @@ constructor(
                 initialValue = QuickActionChipModel.Hidden(QuickActionChipId.ScreenRecord),
             )
 
+    override suspend fun onActivated() {
+        Log.d(TAG, "ScreenRecord ViewModel active = true")
+        try {
+            awaitCancellation()
+        } finally {
+            Log.d(TAG, "ScreenRecord ViewModel active = false")
+        }
+    }
+
     private fun toPopupChipModel(model: ScreenRecordPopupModel?): QuickActionChipModel {
         if (model == null) {
             return QuickActionChipModel.Hidden(QuickActionChipId.ScreenRecord)
         }
+
+        Log.d(TAG, "ScreenRecord PopupChipModel = PopupChip(model=${model::class.simpleName})")
 
         val recordingDescription =
             ContentDescription.Resource(R.string.screenrecord_ongoing_screen_only)
@@ -132,5 +147,9 @@ constructor(
     @AssistedFactory
     interface Factory {
         fun create(): ScreenRecordPopupChipViewModel
+    }
+
+    companion object {
+        private const val TAG = "DynamicIslandDebug"
     }
 }
