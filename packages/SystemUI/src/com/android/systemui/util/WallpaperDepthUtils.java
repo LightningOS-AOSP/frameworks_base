@@ -32,6 +32,7 @@ import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.MathUtils;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -87,16 +88,37 @@ public class WallpaperDepthUtils {
         mContext = context.getApplicationContext();
         mScrimController = scrimController;
         mTunerService = Dependency.get(TunerService.class);
-        mTunerService.addTunable(mTunable, WALLPAPER_DEPTH_KEY, 
-            WALLPAPER_DEPTH_ENABLED_KEY, WALLPAPER_DEPTH_OPACITY_KEY, 
-            WALLPAPER_DEPTH_OFFSET_X_KEY, WALLPAPER_DEPTH_OFFSET_Y_KEY,
-            WALLPAPER_DEPTH_BOTTOM_FADE_KEY, WALLPAPER_DEPTH_FADE_CURVE_KEY,
-            WALLPAPER_DEPTH_BOTTOM_INSET_KEY);
+        mSpatialEffectController = new SpatialEffectController(mContext);
+        mTunerService.addTunable(mTunable, WALLPAPER_DEPTH_KEY,
+                WALLPAPER_DEPTH_ENABLED_KEY, WALLPAPER_DEPTH_OPACITY_KEY,
+                WALLPAPER_DEPTH_OFFSET_X_KEY, WALLPAPER_DEPTH_OFFSET_Y_KEY,
+                WALLPAPER_DEPTH_BOTTOM_FADE_KEY, WALLPAPER_DEPTH_FADE_CURVE_KEY,
+                WALLPAPER_DEPTH_BOTTOM_INSET_KEY, WALLPAPER_DEPTH_SPATIAL_KEY);
+
+        mLockScreenBackground = new FrameLayout(mContext) {
+            @Override
+            public boolean dispatchTouchEvent(MotionEvent ev) {
+                return false;
+            }
+        };
+        FrameLayout.LayoutParams bgLp = new FrameLayout.LayoutParams(-1, -1);
+        mLockScreenBackground.setLayoutParams(bgLp);
+        mLockScreenBackground.setClickable(false);
+        mLockScreenBackground.setFocusable(false);
+        mLockScreenBackground.setFocusableInTouchMode(false);
+        mLockScreenBackground.setImportantForAccessibility(
+                View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+
         mLockScreenSubject = new FrameLayout(mContext) {
             @Override
             protected void onDetachedFromWindow() {
                 super.onDetachedFromWindow();
                 WallpaperDepthUtils.this.onDetachedFromWindow();
+            }
+
+            @Override
+            public boolean dispatchTouchEvent(MotionEvent ev) {
+                return false;
             }
         };
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -1);
@@ -104,7 +126,12 @@ public class WallpaperDepthUtils {
         // Make view non-interactive so touches pass through to notifications
         mLockScreenSubject.setClickable(false);
         mLockScreenSubject.setFocusable(false);
-        mLockScreenSubject.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        mLockScreenSubject.setFocusableInTouchMode(false);
+        mLockScreenSubject.setImportantForAccessibility(
+                View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+
+        mSpatialEffectController.attachBackgroundView(mLockScreenBackground);
+        mSpatialEffectController.attachSubjectView(mLockScreenSubject);
     }
 
     public static WallpaperDepthUtils getInstance(Context context, ScrimController scrimController) {
