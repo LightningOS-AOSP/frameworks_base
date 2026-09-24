@@ -683,6 +683,57 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
         updateThemeOverlays(forceReload);
     }
 
+    private void fetchCustomThemeSettings() {
+        final String overlayPackageJson = mSecureSettings.getStringForUser(
+                Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
+                mUserTracker.getUserId());
+        if (!TextUtils.isEmpty(overlayPackageJson)) {
+            try {
+                JSONObject object = new JSONObject(overlayPackageJson);
+                mContrast = object.optDouble("_contrast_level", 0.0);
+                mChromaBoost = object.optDouble("_chroma_boost", 0.0);
+                mIsFidelityEnabled = object.optBoolean("_fidelity_enabled", true);
+                mChromaAccent1 = object.optDouble("_chroma_accent1", 0.0);
+                mChromaAccent2 = object.optDouble("_chroma_accent2", 0.0);
+                mChromaAccent3 = object.optDouble("_chroma_accent3", 0.0);
+                mChromaNeutral1 = object.optDouble("_chroma_neutral1", 0.0);
+                mChromaNeutral2 = object.optDouble("_chroma_neutral2", 0.0);
+                String secondarySeedHex = object.optString("_secondary_seed_color", "");
+                if (!secondarySeedHex.isEmpty()) {
+                    try {
+                        String colorStr = secondarySeedHex.startsWith("#")
+                                ? secondarySeedHex : "#" + secondarySeedHex;
+                        mSecondarySeedColor = Color.parseColor(colorStr);
+                    } catch (IllegalArgumentException e) {
+                        Log.w(TAG, "Invalid _secondary_seed_color: " + secondarySeedHex);
+                        mSecondarySeedColor = null;
+                    }
+                } else {
+                    mSecondarySeedColor = null;
+                }
+                mHueShift = object.optDouble("_hue_shift", 0.0);
+                mToneShiftLight = object.optDouble("_tone_shift_light", 0.0);
+                mToneShiftDark = object.optDouble("_tone_shift_dark", 0.0);
+                if (DEBUG) {
+                    Log.d(TAG, "Custom theme settings: contrast=" + mContrast
+                            + " chromaBoost=" + mChromaBoost
+                            + " fidelity=" + mIsFidelityEnabled
+                            + " chromaAccent1=" + mChromaAccent1
+                            + " chromaAccent2=" + mChromaAccent2
+                            + " chromaAccent3=" + mChromaAccent3
+                            + " chromaNeutral1=" + mChromaNeutral1
+                            + " chromaNeutral2=" + mChromaNeutral2
+                            + " secondarySeed=" + mSecondarySeedColor
+                            + " hueShift=" + mHueShift
+                            + " toneShiftLight=" + mToneShiftLight
+                            + " toneShiftDark=" + mToneShiftDark);
+                }
+            } catch (JSONException e) {
+                Log.w(TAG, "Failed to parse custom theme settings.", e);
+            }
+        }
+    }
+
     /**
      * Return the main theme color from a given {@link WallpaperColors} instance.
      */
