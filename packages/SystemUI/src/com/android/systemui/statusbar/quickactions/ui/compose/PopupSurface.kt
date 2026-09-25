@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.android.axion.blur.AxBlurColors
-import com.android.axion.blur.BlurEngine
+import com.android.axion.blur.AxBlurBackgroundRenderer
 import com.android.systemui.statusbar.quickactions.popups.shared.DynamicIslandFeatureSettings.POPUP_COLOR_MODE_BLUR
 import com.android.systemui.statusbar.quickactions.popups.shared.DynamicIslandFeatureSettings.POPUP_COLOR_MODE_SOLID_BLACK
 import com.android.systemui.statusbar.quickactions.popups.shared.DynamicIslandFeatureSettings.observeDynamicIslandPopupColorMode
@@ -51,8 +51,7 @@ import com.android.systemui.statusbar.quickactions.popups.shared.DynamicIslandFe
 
 private class PopupBlurHost(context: Context, private val cornerRadiusPx: Float) : View(context) {
     private val overlayColor = AxBlurColors.surfaceLightTint(context)
-    private val blur =
-        BlurEngine(this).apply {
+        private val blur = AxBlurBackgroundRenderer(this).apply {
             setOverlayColor(overlayColor)
             setEnabled(true)
         }
@@ -65,11 +64,12 @@ private class PopupBlurHost(context: Context, private val cornerRadiusPx: Float)
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        blur.onAttachedToWindow()
         (parent as? ViewGroup)?.layoutTransition = null
     }
 
     override fun onDetachedFromWindow() {
-        blur.dispose()
+        blur.onDetachedFromWindow()
         super.onDetachedFromWindow()
     }
 
@@ -84,7 +84,7 @@ private class PopupBlurHost(context: Context, private val cornerRadiusPx: Float)
     override fun draw(canvas: Canvas) {
         if (width > 0 && height > 0) {
             bgDrawable.setBounds(0, 0, width, height)
-            if (!blur.draw(canvas, 0, 0, width, height, cornerRadiusPx, 255)) {
+            if (!blur.draw(canvas, 0, 0, width, height, cornerRadiusPx, overlayColor, 255)) {
                 bgDrawable.setColor(overlayColor and 0x00FFFFFF or (0xCC shl 24))
                 bgDrawable.draw(canvas)
                 bgDrawable.setColor(0x00000000)

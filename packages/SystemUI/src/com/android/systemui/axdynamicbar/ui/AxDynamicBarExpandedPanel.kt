@@ -135,6 +135,9 @@ constructor(
         val statusBarTop = windowMetrics.windowInsets
             .getInsets(WindowInsets.Type.statusBars())
             .top
+        val hasCutout = windowMetrics.windowInsets
+            .getInsets(WindowInsets.Type.displayCutout())
+            .top > 0
 
         val view = ComposeView(context).apply {
             setContent { PlatformTheme { OverlayContent(viewModel, statusBarTop, hasCutout) } }
@@ -235,7 +238,7 @@ constructor(
 }
 
 @Composable
-private fun OverlayContent(viewModel: AxDynamicBarChipViewModel, statusBarHeightPx: Int) {
+private fun OverlayContent(viewModel: AxDynamicBarChipViewModel, statusBarHeightPx: Int, hasCutout: Boolean) {
     val density = LocalDensity.current
     val isLargeScreen = Utilities.isLargeScreen(LocalContext.current)
 

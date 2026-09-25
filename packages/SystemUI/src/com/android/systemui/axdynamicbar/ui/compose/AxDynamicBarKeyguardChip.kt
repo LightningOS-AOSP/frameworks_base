@@ -5,11 +5,12 @@ package com.android.systemui.axdynamicbar.ui.compose
 import com.android.systemui.statusbar.chips.ui.model.OngoingActivityChipModel
 import com.android.systemui.statusbar.chips.ui.model.Chronometer
 import android.graphics.Canvas
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.viewinterop.AndroidView
+import com.android.axion.blur.AxBlurBackgroundRenderer
 import com.android.axion.blur.AxBlurColors
-import com.android.axion.blur.BlurEngine
 import com.android.compose.animation.Expandable
 import com.android.compose.animation.rememberExpandableController
 import com.android.systemui.animation.Expandable as SystemUiExpandable
@@ -137,11 +138,23 @@ private val BatteryIconSize = ChipHeight - SpaceXxl
 private val CountBadgeHeight = ChipHeight / 2
 
 private class MusicPillBlurHost(context: Context) : View(context) {
-    private val blur = BlurEngine(this).apply {
-        setOverlayColor(AxBlurColors.surfaceLightTint(context))
-        setEnabled(true)
+    private val blur = AxBlurBackgroundRenderer(this)
+    private val overlayColor = AxBlurColors.surfaceLightTint(context)
+
+    private val bgDrawable: GradientDrawable = GradientDrawable().also { d ->
+        d.setColor(0x00000000)
+        d.cornerRadius = context.resources.displayMetrics.density * 50f
     }
-    private val cornerRadiusPx = context.resources.displayMetrics.density * 50f
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        blur.onAttachedToWindow()
+    }
+
+    override fun onDetachedFromWindow() {
+        blur.onDetachedFromWindow()
+        super.onDetachedFromWindow()
+    }
 
     override fun onVisibilityAggregated(isVisible: Boolean) {
         super.onVisibilityAggregated(isVisible)
@@ -153,9 +166,13 @@ private class MusicPillBlurHost(context: Context) : View(context) {
 
     override fun draw(canvas: Canvas) {
         if (width > 0 && height > 0) {
-            blur.draw(canvas, 0, 0, width, height, cornerRadiusPx, 255)
+            bgDrawable.setBounds(0, 0, width, height)
+            if (!blur.drawBackgroundWithOverlayColor(canvas, bgDrawable, overlayColor)) {
+                bgDrawable.setColor(overlayColor and 0x00FFFFFF or (0xCC shl 24))
+                bgDrawable.draw(canvas)
+                bgDrawable.setColor(0x00000000)
+            }
         }
-        super.draw(canvas)
     }
 }
 
@@ -1114,7 +1131,11 @@ private fun actionsFor(event: IslandEvent, context: Context): List<ChipAction> =
                     if (event.state == RecordingState.RECORDING) ActionIcon.PAUSE else ActionIcon.PLAY,
                 ) { _, _, ctx -> action.action.actionIntent?.sendWithBal(ctx) }
             },
-            ChipAction(ActionIcon.STOP) { vm, e, _ -> vm.dismissEvent(e) },
+            stop?.let { action ->
+                ChipAction(ActionIcon.STOP) { _, _, ctx ->
+                    action.action.actionIntent?.sendWithBal(ctx)
+                }
+            },
         )
     }
     is IslandEvent.Timer -> {
