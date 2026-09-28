@@ -170,6 +170,15 @@ constructor(
 
     val isQsFullyCollapsed by derivedStateOf { qsExpansion <= 0f }
 
+    fun resetCollapsedExpansionState() {
+        isQsExpanded = false
+        isStackScrollerOverscrolling = false
+        setQsExpansionValue(0f)
+        panelExpansionFraction = 0f
+        squishinessFraction = 1f
+        proposedTranslation = 0f
+    }
+
     var panelExpansionFraction by mutableFloatStateOf(0f)
 
     var squishinessFraction by mutableFloatStateOf(1f)
