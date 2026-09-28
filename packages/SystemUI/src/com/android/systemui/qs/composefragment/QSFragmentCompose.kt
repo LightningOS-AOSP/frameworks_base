@@ -606,10 +606,26 @@ constructor(
 
     override fun setPanelExpanded(panelExpanded: Boolean) {
         viewModel.isPanelExpanded = panelExpanded
+        if (!panelExpanded) {
+            axQsViewModel.clearCollapseGuard()
+        }
+        if (!panelExpanded && !viewModel.isInSplitShade) {
+            viewModel.resetCollapsedExpansionState()
+        }
     }
 
     override fun setExpanded(qsExpanded: Boolean) {
         viewModel.isQsExpanded = qsExpanded
+        if (!qsExpanded) {
+            axQsViewModel.clearCollapseGuard()
+            if (!viewModel.isInSplitShade && !viewModel.isPanelExpanded) {
+                viewModel.resetCollapsedExpansionState()
+            }
+        }
+    }
+
+    override fun setForceQsEvent(forceQsEvent: Boolean) {
+        axQsViewModel.setForceQsEvent(forceQsEvent)
     }
 
     override fun setListening(listening: Boolean) {
@@ -1392,16 +1408,18 @@ private class FrameLayoutTouchPassthrough(
             dirtyClipData = false
             updateClippingPath()
         }
+
+        if (!currentClippingPath.isEmpty) {
+            canvas.translate(0f, -translationY)
+            canvas.clipOutPath(currentClippingPath)
+            canvas.translate(0f, translationY)
+        }
+
         if (qsVisible) {
             // If QS should not be visible, there's no need to draw this tree at all. We do this
             // in the view (instead of in compose) so it's completely synchronized with the clip.
             // As this FrameLayout doesn't have any content, and the ComposeView is the only child,
             // this is equivalent to blocking the draw in `drawChild`.
-            if (!currentClippingPath.isEmpty) {
-                canvas.translate(0f, -translationY)
-                canvas.clipOutPath(currentClippingPath)
-                canvas.translate(0f, translationY)
-            }
             super.dispatchDraw(canvas)
         }
     }

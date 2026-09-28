@@ -1679,6 +1679,9 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             flingQs(0, FLING_COLLAPSE, null, true);
         } else if (isExpansionEnabled()) {
             mLockscreenGestureLogger.write(MetricsProto.MetricsEvent.ACTION_SHADE_QS_TAP, 0, 0);
+            if (mQs != null) {
+                mQs.setForceQsEvent(true);
+            }
             flingQs(0, FLING_EXPAND, null, true);
         }
     }
@@ -1770,13 +1773,16 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
         }
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
             mConflictingExpansionGesture = false;
-            resetEarlyExpansion();
+            maybeResetEarlyExpansion();
         }
         if (action == MotionEvent.ACTION_DOWN && isFullyCollapsed && isExpansionEnabled()) {
             mTwoFingerExpandPossible = true;
         }
         if (mTwoFingerExpandPossible && isOpenQsEvent(event) && isInStatusBar) {
             mMetricsLogger.count(COUNTER_PANEL_OPEN_QS, 1);
+            if (mQs != null) {
+                mQs.setForceQsEvent(true);
+            }
             setExpandImmediate(true);
             mNotificationStackScrollLayoutController.setQuickQsHidden(true);
             mNotificationStackScrollLayoutController.setShouldShowShelfOnly(!mSplitShadeEnabled);
@@ -1878,7 +1884,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
                     flingQsWithCurrentVelocity(y,
                             event.getActionMasked() == MotionEvent.ACTION_CANCEL);
                 } else {
-                    resetEarlyExpansion();
+                    maybeResetEarlyExpansion();
                     traceQsJank(false,
                             event.getActionMasked() == MotionEvent.ACTION_CANCEL);
                 }
@@ -2155,6 +2161,10 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             mQs.setExpanded(true);
             mMediaHierarchyManager.setQsExpanded(true);
         }
+    }
+
+    private void maybeResetEarlyExpansion() {
+        updateQsState();
     }
 
     private void resetEarlyExpansion() {
