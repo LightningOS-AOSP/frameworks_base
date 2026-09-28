@@ -34,15 +34,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.ColorInt
 import androidx.annotation.LayoutRes
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -106,6 +109,8 @@ fun AxQuickSettingsHeader(
     modifier: Modifier = Modifier,
 ) {
     val foregroundColor = MaterialTheme.colorScheme.onSurface
+    val clockStyle = rememberClockStyle()
+    val clockHasEmbeddedDate = clockStyle in 1..3
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val landscape =
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -117,56 +122,68 @@ fun AxQuickSettingsHeader(
                     AxQuickSettingsLayoutDefaults.PORTRAIT_SIDE_PADDING_FRACTION
                 }
         val startContent: @Composable () -> Unit = {
-            Row(
+            Column(
                 modifier = Modifier.padding(start = sidePadding),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start,
             ) {
-                AxQuickSettingsClock(viewModel)
+                AxQuickSettingsClock(viewModel = viewModel, clockStyle = clockStyle)
+                if (!clockHasEmbeddedDate) {
+                    AxQuickSettingsDate(viewModel = viewModel)
+                }
             }
         }
         val endContent: @Composable () -> Unit = {
-            Row(
+            Column(
                 modifier = Modifier.padding(end = sidePadding),
-                horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center,
             ) {
-                AxStatusIcons(
+                AxCarrierText(
                     viewModel = viewModel,
-                    isTransitioning = isTransitioning,
-                    foregroundColor = foregroundColor.toArgb(),
-                    backgroundColor = Color.Transparent.toArgb(),
-                )
-                val context = LocalContext.current
-                AxBatteryInfo(
-                    viewModel = viewModel,
-                    showIcon = true,
-                    useExpandedFormat = false,
                     textColor = foregroundColor,
-                    iconTint = foregroundColor,
-                    iconBackgroundColor = Color.Transparent,
-                    onClick = {
-                        try {
-                            val intent =
-                                Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    },
                 )
-                if (viewModel.isPrivacyChipVisible) {
-                    AxPrivacyChip(
-                        privacyList = viewModel.privacyItems,
-                        onClick = viewModel::onPrivacyChipClicked,
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AxStatusIcons(
+                        viewModel = viewModel,
+                        isTransitioning = isTransitioning,
+                        foregroundColor = foregroundColor.toArgb(),
+                        backgroundColor = Color.Transparent.toArgb(),
                     )
+                    val context = LocalContext.current
+                    AxBatteryInfo(
+                        viewModel = viewModel,
+                        showIcon = true,
+                        useExpandedFormat = false,
+                        textColor = foregroundColor,
+                        iconTint = foregroundColor,
+                        iconBackgroundColor = Color.Transparent,
+                        onClick = {
+                            try {
+                                val intent =
+                                    Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        },
+                    )
+                    if (viewModel.isPrivacyChipVisible) {
+                        AxPrivacyChip(
+                            privacyList = viewModel.privacyItems,
+                            onClick = viewModel::onPrivacyChipClicked,
+                        )
+                    }
                 }
             }
         }
         if (landscape) {
             val statusBarHeightDp = with(LocalDensity.current) { viewModel.statusBarHeightPx.toDp() }
             Box(
-                Modifier.fillMaxWidth().height(statusBarHeightDp)
+                Modifier.fillMaxWidth().heightIn(min = statusBarHeightDp)
             ) {
                 Box(modifier = Modifier.align(Alignment.TopStart)) { startContent() }
                 Box(modifier = Modifier.align(Alignment.TopEnd)) { endContent() }
@@ -246,7 +263,34 @@ private fun AxPrivacyChip(
 }
 
 @Composable
-fun AxQuickSettingsClock(viewModel: ShadeHeaderViewModel, modifier: Modifier = Modifier) {
+fun AxCarrierText(
+    viewModel: ShadeHeaderViewModel,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val carrierText = viewModel.carrierText?.toString()?.trim()
+    if (!carrierText.isNullOrEmpty()) {
+        Text(
+            text = carrierText,
+            color = textColor,
+            style =
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
+            modifier =
+                modifier
+                    .basicMarquee(iterations = 1)
+                    .clickable { viewModel.onShadeCarrierGroupClicked() },
+        )
+    }
+}
+
+@Composable
+fun rememberClockStyle(): Int {
     val context = LocalContext.current
     var clockStyle by remember {
         mutableIntStateOf(
@@ -280,7 +324,15 @@ fun AxQuickSettingsClock(viewModel: ShadeHeaderViewModel, modifier: Modifier = M
             context.contentResolver.unregisterContentObserver(observer)
         }
     }
+    return clockStyle
+}
 
+@Composable
+fun AxQuickSettingsClock(
+    viewModel: ShadeHeaderViewModel,
+    modifier: Modifier = Modifier,
+    clockStyle: Int = rememberClockStyle(),
+) {
     val textColor = MaterialTheme.colorScheme.onSurface
     when (clockStyle) {
         0 -> AxHeaderClock(onClick = viewModel::onClockClicked, textColor = textColor, modifier = modifier)
@@ -384,7 +436,7 @@ private fun AxHeaderDate(
 ) {
     val textStyle =
         MaterialTheme.typography.bodyLarge.copy(
-            fontSize = AX_CLOCK_DATE_TEXT_SIZE.sp,
+            fontSize = 14.sp,
             platformStyle = PlatformTextStyle(includeFontPadding = true),
         )
     Layout(
@@ -487,7 +539,7 @@ private fun AxCutoutAwareShadeHeader(
                 minWidth = 0,
                 maxWidth = contentMaxWidth.coerceAtLeast(0),
                 minHeight = height,
-                maxHeight = height,
+                maxHeight = Constraints.Infinity,
             )
 
         val startMeasurable = measurables[0][0]
@@ -496,7 +548,9 @@ private fun AxCutoutAwareShadeHeader(
         val startPlaceable = startMeasurable.measure(childConstraints)
         val endPlaceable = endMeasurable.measure(childConstraints)
 
-        layout(screenWidth, height) {
+        val layoutHeight = max(height, max(startPlaceable.height, endPlaceable.height))
+
+        layout(screenWidth, layoutHeight) {
             when (cutoutLocation) {
                 CutoutLocation.NONE,
                 CutoutLocation.RIGHT -> {
