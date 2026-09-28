@@ -28,6 +28,8 @@ import com.android.systemui.media.remedia.domain.interactor.MediaInteractor
 import com.android.systemui.media.remedia.domain.interactor.MediaInteractorImpl
 import com.android.systemui.media.remedia.shared.flag.MediaControlsInComposeFlag
 import com.android.systemui.scene.shared.flag.SceneContainerFlag
+import com.android.systemui.media.controls.shared.model.MediaData
+import com.android.systemui.media.remedia.data.repository.MediaPipelineRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -56,11 +58,35 @@ interface MediaDomainModule {
         fun providesMediaDataManager(
             legacyProvider: Provider<LegacyMediaDataManagerImpl>,
             newProvider: Provider<MediaCarouselInteractor>,
+            mediaPipelineRepository: Provider<MediaPipelineRepository>,
         ): MediaDataManager {
             return if (SceneContainerFlag.isEnabled || MediaControlsInComposeFlag.isEnabled) {
                 newProvider.get()
             } else {
-                legacyProvider.get()
+                legacyProvider.get().also { legacy ->
+                    legacy.addListener(
+                        object : MediaDataManager.Listener {
+                            override fun onMediaDataLoaded(
+                                key: String,
+                                oldKey: String?,
+                                data: MediaData,
+                                immediately: Boolean,
+                            ) {
+                                if (oldKey != null && oldKey != key) {
+                                    mediaPipelineRepository.get().removeMediaEntry(oldKey)
+                                }
+                                mediaPipelineRepository.get().addMediaEntry(key, data)
+                                mediaPipelineRepository.get().addCurrentUserMediaEntry(data)
+                            }
+
+                            override fun onMediaDataRemoved(key: String, userInitiated: Boolean) {
+                                mediaPipelineRepository.get().removeMediaEntry(key)?.let { mediaData ->
+                                    mediaPipelineRepository.get().removeCurrentUserMediaEntry(mediaData.instanceId)
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
 
