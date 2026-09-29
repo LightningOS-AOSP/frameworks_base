@@ -438,7 +438,7 @@ constructor(
                 synchronizeQsState(
                     sceneState,
                     viewModel.containerViewModel.editModeViewModel.isEditing,
-                    snapshotFlow { viewModel.expansionState }.map { it.progress },
+                    snapshotFlow { viewModel.expansionState.progress },
                 )
             }
             // Normally, the Edit mode will stop if the composable leaves, but if the shade

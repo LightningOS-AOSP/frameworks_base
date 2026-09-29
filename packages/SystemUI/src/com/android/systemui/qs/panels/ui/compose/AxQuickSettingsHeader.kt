@@ -125,12 +125,22 @@ fun AxQuickSettingsHeader(
         val startContent: @Composable () -> Unit = {
             Column(
                 modifier = Modifier.padding(start = sidePadding),
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                AxQuickSettingsClock(viewModel = viewModel, clockStyle = clockStyle)
+                Row(
+                    modifier = Modifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AxQuickSettingsClock(viewModel = viewModel, clockStyle = clockStyle)
+                }
                 if (!clockHasEmbeddedDate) {
-                    AxQuickSettingsDate(viewModel = viewModel)
+                    Row(
+                        modifier = Modifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AxQuickSettingsDate(viewModel = viewModel)
+                    }
                 }
             }
         }

@@ -16,7 +16,11 @@
 
 package com.android.systemui.qs.panels.ui.compose
 
+import android.content.Intent
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
@@ -47,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,9 +68,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.android.compose.animation.Expandable
 import com.android.compose.animation.scene.ContentScope
 import com.android.compose.gesture.gesturesDisabled
@@ -79,6 +89,7 @@ import com.android.systemui.qs.panels.ui.viewmodel.toolbar.ToolbarViewModel
 import com.android.systemui.res.R
 import com.android.systemui.shade.ui.composable.ShadeHeader
 import com.android.systemui.shade.ui.viewmodel.ShadeHeaderViewModel
+import com.android.internal.util.android.OmniJawsClient
 
 private val DragHandleWidth = 56.dp
 private val DragHandleHeight = 4.dp
@@ -265,12 +276,122 @@ internal fun AxQsDateHeader(
                 AxQuickSettingsDate(viewModel = shadeHeaderViewModel)
             }
         }
+        if (showEdit) {
+            AxQsWeather(
+                modifier = Modifier.padding(end = 4.dp),
+            )
+        }
         AxQsHeaderActions(
             viewModel = toolbarViewModel,
             isFullyVisible = isFullyVisible,
             editButtonProgress = editButtonProgress,
             showEdit = showEdit,
             modifier = Modifier.offset(x = 6.dp),
+        )
+    }
+}
+
+@Composable
+fun AxQsWeather(
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var weatherInfo by remember { mutableStateOf<OmniJawsClient.WeatherInfo?>(null) }
+    var weatherIcon by remember { mutableStateOf<Drawable?>(null) }
+
+    DisposableEffect(context) {
+        val client = OmniJawsClient.get()
+        fun updateWeather() {
+            try {
+                if (client.isOmniJawsEnabled(context)) {
+                    client.queryWeather(context)
+                    val info = client.weatherInfo
+                    weatherInfo = info
+                    weatherIcon =
+                        if (info != null) client.getWeatherConditionImage(context, info.conditionCode)
+                        else null
+                } else {
+                    weatherInfo = null
+                    weatherIcon = null
+                }
+            } catch (_: Exception) {
+                weatherInfo = null
+                weatherIcon = null
+            }
+        }
+
+        val observer =
+            object : OmniJawsClient.OmniJawsObserver {
+                override fun weatherUpdated() {
+                    updateWeather()
+                }
+
+                override fun weatherError(errorReason: Int) {
+                    if (errorReason == OmniJawsClient.EXTRA_ERROR_DISABLED) {
+                        weatherInfo = null
+                        weatherIcon = null
+                    }
+                }
+
+                override fun updateSettings() {
+                    updateWeather()
+                }
+            }
+
+        updateWeather()
+        client.addObserver(context, observer)
+
+        onDispose { client.removeObserver(context, observer) }
+    }
+
+    val info = weatherInfo ?: return
+    if (info.temp.isNullOrEmpty() || info.temp == "-") {
+        return
+    }
+
+    val tempUnits = info.tempUnits ?: "°C"
+    val condition = info.condition?.takeIf { it.isNotEmpty() }
+    val weatherText =
+        if (condition != null) "${info.temp}$tempUnits · $condition" else "${info.temp}$tempUnits"
+
+    Row(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                    try {
+                        val intent =
+                            OmniJawsClient.get().getWeatherActivityIntent(context).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                }
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        weatherIcon?.let { icon ->
+            AndroidView(
+                factory = { ctx ->
+                    ImageView(ctx).apply {
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                    }
+                },
+                update = { view -> view.setImageDrawable(icon) },
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = weatherText,
+            style =
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
