@@ -70,6 +70,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -137,7 +138,7 @@ fun AxQuickSettingsHeader(
             Column(
                 modifier = Modifier.padding(end = sidePadding),
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 AxCarrierText(
                     viewModel = viewModel,
@@ -273,6 +274,7 @@ fun AxCarrierText(
         Text(
             text = carrierText,
             color = textColor,
+            textAlign = TextAlign.End,
             style =
                 MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 14.sp,

@@ -256,6 +256,7 @@ constructor(
     private val locationTemp = IntArray(2)
     private var bottomBarPositionInRoot = IntRect(IntOffset(0, 0), 0)
     private var bottomContentPadding by mutableIntStateOf(0)
+    private var overlayHeaderHeightPx by mutableIntStateOf(0)
     private val containerView: FrameLayoutTouchPassthrough?
         get() = view as? FrameLayoutTouchPassthrough
 
@@ -1105,7 +1106,15 @@ constructor(
         AxQuickSettingsHeader(
             viewModel = headerViewModel,
             isTransitioning = isTransitioning,
-            modifier = modifier.fillMaxWidth().padding(top = topPadding),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(top = topPadding)
+                    .onSizeChanged { size ->
+                        if (size.height > 0) {
+                            overlayHeaderHeightPx = size.height
+                        }
+                    },
         )
     }
 
@@ -1118,7 +1127,14 @@ constructor(
             WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
         val statusBarHeight =
             WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        return displayCutoutTop + statusBarHeight + QuickSettingsShade.Dimensions.ShortPadding
+        val density = LocalDensity.current
+        val headerHeight =
+            if (overlayHeaderHeightPx > 0) {
+                with(density) { overlayHeaderHeightPx.toDp() }
+            } else {
+                statusBarHeight + 24.dp
+            }
+        return displayCutoutTop + headerHeight + QuickSettingsShade.Dimensions.ShortPadding
     }
 
     private fun useOverlayShadeHeader() = true
