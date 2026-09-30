@@ -109,9 +109,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.android.axion.compose.preferences.PreferenceGroup
-import com.android.axion.compose.preferences.SliderPreference
-import com.android.axion.compose.preferences.SwitchPreference
 import com.android.systemui.qs.panels.shared.model.AxQsControl
 import com.android.systemui.qs.panels.shared.model.AxQsControlSpans
 import com.android.systemui.qs.panels.shared.model.AxQsGridItem
@@ -757,13 +754,6 @@ private fun AxEditableGrid(
                 }
                 saveOrders()
             },
-            settings = {
-                AxQsGridSettingsInline(
-                    controlLayout = controlGridLayout,
-                    tileLayout = tileGridLayout,
-                    viewModel = axQsViewModel,
-                )
-            },
         )
     }
 }
@@ -1119,80 +1109,6 @@ private fun AxEditableGridSection(
             }
         }
     }
-}
-
-@Composable
-private fun AxQsGridSettingsInline(
-    controlLayout: AxQsGridLayout,
-    tileLayout: AxQsGridLayout,
-    viewModel: AxQsViewModel,
-) {
-    val colorScheme = MaterialTheme.colorScheme.copy(surfaceBright = Color.Transparent)
-    MaterialTheme(colorScheme = colorScheme) {
-        PreferenceGroup {
-            if (tileLayout.supportsTileLabels) {
-                item {
-                    SwitchPreference(
-                        title = axString("ax_qs_show_tile_labels", "Show tile labels"),
-                        checked = viewModel.showTileLabels(tileLayout),
-                        onCheckedChange = { viewModel.setTileLabels(tileLayout, it) },
-                    )
-                }
-            }
-            item { GridColumnSliderInline(layout = controlLayout, viewModel = viewModel) }
-            item { GridColumnSliderInline(layout = tileLayout, viewModel = viewModel) }
-            if (viewModel.rowRange(tileLayout) != null) {
-                item { GridRowSliderInline(layout = tileLayout, viewModel = viewModel) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GridColumnSliderInline(layout: AxQsGridLayout, viewModel: AxQsViewModel) {
-    val label =
-        when (layout.section) {
-            AxQsGridSection.CONTROLS -> axString("ax_qs_control_grid_columns", "Control columns")
-            AxQsGridSection.TILES -> axString("ax_qs_tile_grid_columns", "Tile columns")
-        }
-    GridSizeSliderInline(
-        label = label,
-        savedValue = viewModel.columns(layout),
-        range = viewModel.columnRange(layout),
-        onValueChangeFinished = { viewModel.setColumns(layout, it) },
-    )
-}
-
-@Composable
-private fun GridRowSliderInline(layout: AxQsGridLayout, viewModel: AxQsViewModel) {
-    val range = viewModel.rowRange(layout) ?: return
-    GridSizeSliderInline(
-        label = axString("ax_qs_tile_grid_rows", "Tile rows"),
-        savedValue = viewModel.rows(layout),
-        range = range,
-        onValueChangeFinished = { viewModel.setRows(layout, it) },
-    )
-}
-
-@Composable
-private fun GridSizeSliderInline(
-    label: String,
-    savedValue: Int,
-    range: IntRange,
-    onValueChangeFinished: (Int) -> Unit,
-) {
-    var sliderValue by remember(savedValue, range) { mutableFloatStateOf(savedValue.toFloat()) }
-    val selectedValue = sliderValue.roundToInt().coerceIn(range.first, range.last)
-    SliderPreference(
-        title = label,
-        summary = "",
-        value = sliderValue,
-        onValueChange = { sliderValue = it },
-        onValueChangeFinished = { onValueChangeFinished(selectedValue) },
-        valueRange = range.first.toFloat()..range.last.toFloat(),
-        steps = (range.last - range.first - 1).coerceAtLeast(0),
-        displayValue = selectedValue.toString(),
-    )
 }
 
 private val AxQsGridItem<AxEditGridValue>.section: AxQsGridSection

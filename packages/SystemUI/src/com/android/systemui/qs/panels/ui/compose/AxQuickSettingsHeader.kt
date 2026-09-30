@@ -420,7 +420,7 @@ private fun AxHeaderClock(onClick: () -> Unit, textColor: Color, modifier: Modif
                         textDirection = View.TEXT_DIRECTION_LOCALE
                         gravity = Gravity.START or Gravity.CENTER_VERTICAL
                         setTypeface(typeface, Typeface.NORMAL)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, AX_CLOCK_DATE_TEXT_SIZE)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, AX_CLOCK_TEXT_SIZE)
                         setPaddingRelative(0, 0, clockEndPadding, 0)
                     }
             },
@@ -431,7 +431,7 @@ private fun AxHeaderClock(onClick: () -> Unit, textColor: Color, modifier: Modif
                     )
                 view.setTextColor(textColor.toArgb())
                 view.setTypeface(view.typeface, Typeface.NORMAL)
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, AX_CLOCK_DATE_TEXT_SIZE)
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, AX_CLOCK_TEXT_SIZE)
                 view.setPaddingRelative(0, 0, clockEndPadding, 0)
             },
             modifier = modifier.wrapContentWidth(unbounded = true).clickable(onClick = onClick),
@@ -448,7 +448,7 @@ private fun AxHeaderDate(
 ) {
     val textStyle =
         MaterialTheme.typography.bodyLarge.copy(
-            fontSize = 14.sp,
+            fontSize = AX_DATE_TEXT_SIZE.sp,
             platformStyle = PlatformTextStyle(includeFontPadding = true),
         )
     Layout(
@@ -500,7 +500,8 @@ private fun AxHeaderDate(
     }
 }
 
-private const val AX_CLOCK_DATE_TEXT_SIZE = 18f
+private const val AX_CLOCK_TEXT_SIZE = 22f
+private const val AX_DATE_TEXT_SIZE = 18f
 
 object AxQuickSettingsLayoutDefaults {
     const val PORTRAIT_SIDE_PADDING_FRACTION = AxQsLayoutPadding.PORTRAIT_SIDE_FRACTION

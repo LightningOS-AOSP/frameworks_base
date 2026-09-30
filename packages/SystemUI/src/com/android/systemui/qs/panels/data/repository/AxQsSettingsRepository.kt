@@ -89,6 +89,7 @@ constructor(
             .stateIn(applicationScope, SharingStarted.Eagerly, AxQsPanelMode.TOGETHER)
 
     val quickPanelOnLeft: StateFlow<Boolean> = boolSetting(QUICK_PANEL_ON_LEFT, false)
+    val showWeather: StateFlow<Boolean> = boolSetting(SHOW_WEATHER, true)
 
     val verticalSliderStyles: StateFlow<Map<AxQsVerticalSliderKey, AxQsVerticalSliderStyle>> =
         verticalSliderStyleSettings()
@@ -438,6 +439,7 @@ constructor(
         const val SPLIT_SHADE_TILE_ROWS = "ax_qs_split_shade_tile_rows"
         const val PORTRAIT_QS_TILE_LABELS = "ax_qs_show_tile_labels"
         const val SPLIT_SHADE_TILE_LABELS = "ax_qs_split_shade_show_tile_labels"
+        const val SHOW_WEATHER = "ax_qs_show_weather"
 
         val VERTICAL_SLIDER_KEYS =
             AxQsLayout.entries.flatMap { layout ->

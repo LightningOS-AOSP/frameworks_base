@@ -107,6 +107,7 @@ internal fun ContentScope.AxQsMixedGrid(
     val tileColumns = axQsViewModel.columns(tileGridLayout)
     val tileRowLimit = axQsViewModel.rows(tileGridLayout)
     val showTileLabels = axQsViewModel.showTileLabels(tileGridLayout)
+    val showWeather = axQsViewModel.showWeather
     val allowCircleCells =
         controlColumns >= axQsViewModel.defaultColumns(controlGridLayout) &&
             (splitShade || tileColumns >= axQsViewModel.defaultColumns(tileGridLayout))
@@ -305,6 +306,7 @@ internal fun ContentScope.AxQsMixedGrid(
                             tileColumns = tileColumns,
                             tileRows = rows.tiles,
                             showTileLabels = showTileLabels,
+                            showWeather = showWeather,
                             rowHeight = rowHeight,
                             spacing = spacing,
                             circleCells = circleCells,
@@ -354,6 +356,7 @@ internal fun ContentScope.AxQsMixedGrid(
                         tileColumns = tileColumns,
                         tileRows = rows.tiles,
                         showTileLabels = showTileLabels,
+                        showWeather = showWeather,
                         rowHeight = rowHeight,
                         spacing = spacing,
                         editButtonProgress = qsEntranceProgress,
@@ -379,6 +382,7 @@ internal fun ContentScope.AxQsMixedGrid(
                         tileColumns = tileColumns,
                         tileRows = rows.tiles,
                         showTileLabels = showTileLabels,
+                        showWeather = showWeather,
                         rowHeight = rowHeight,
                         spacing = spacing,
                         editButtonProgress = qsEntranceProgress,

@@ -28,9 +28,8 @@ import com.android.systemui.qs.shared.ui.QuickSettings.Elements
 import com.android.systemui.shade.ui.composable.ShadeHeader
 
 fun TransitionBuilder.axFromQuickQuickSettingsToQuickSettings() {
-    fractionRange(end = AX_QS_SCENE_FADE_START) {
-        fade(SceneKeys.QuickQuickSettings.rootElementKey)
-    }
+    fade(SceneKeys.QuickQuickSettings.rootElementKey)
+    fade(SceneKeys.QuickSettings.rootElementKey)
     disableAxQsSharedElements()
     sharedElement(ShadeHeader.Elements.Clock, enabled = false)
 }
