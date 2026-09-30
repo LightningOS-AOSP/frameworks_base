@@ -382,7 +382,9 @@ public abstract class AppsFilterBase implements AppsFilterSnapshot {
     private static boolean isRomPackage(String pkg) {
         return pkg.startsWith("org.lineageos.")
                 || pkg.startsWith("org.omnirom.")
-                || pkg.startsWith("org.protonaosp.");
+                || pkg.startsWith("org.protonaosp.")
+                || pkg.startsWith("org.lightning.")
+                || pkg.startsWith("com.lightning.");
     }
 
     private static boolean canAccessHiddenPackages(@NonNull Computer snapshot, int callingUid,
