@@ -213,6 +213,12 @@ constructor(
             initialValue = false,
             source = repository.quickPanelOnLeft,
         )
+    val showWeather by
+        hydrator.hydratedStateOf(
+            traceName = "showWeather",
+            initialValue = true,
+            source = repository.showWeather,
+        )
     private val verticalSliderStyles by
         hydrator.hydratedStateOf(
             traceName = "verticalSliderStyles",

@@ -95,15 +95,7 @@ data class AxMediaColors(
 private data class MediaArtworkState(
     val songKey: String,
     val artwork: IconModel?,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is MediaArtworkState) return false
-        return songKey == other.songKey
-    }
-
-    override fun hashCode(): Int = songKey.hashCode()
-}
+)
 
 @Composable
 internal fun MediaArtwork(
@@ -149,7 +141,7 @@ internal fun MediaArtwork(
         when (currentArtwork) {
             null -> Unit
             is IconModel.Loaded -> {
-                val bitmap = remember(targetState.songKey) { currentArtwork.asImageBitmap() }
+                val bitmap = remember(currentArtwork) { currentArtwork.asImageBitmap() }
                 Image(
                     bitmap = bitmap,
                     contentDescription = null,
