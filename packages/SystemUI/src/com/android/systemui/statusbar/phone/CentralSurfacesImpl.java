@@ -974,8 +974,12 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
         View scrimInFront = root.findViewById(R.id.scrim_in_front);
-        int scrimIndex = Math.max(root.indexOfChild(scrimInFront) - 3, 0);
-        root.addView(container, scrimIndex);
+        int scrimIndex = scrimInFront != null ? root.indexOfChild(scrimInFront) : -1;
+        if (scrimIndex >= 0) {
+            root.addView(container, scrimIndex);
+        } else {
+            root.addView(container);
+        }
 
         return container;
     }
@@ -1146,6 +1150,15 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
             View keyguardRootView = root.findViewById(R.id.keyguard_root_view);
             int insertIndex = root.indexOfChild(keyguardRootView) + 1;
             root.addView(depthWallpaperView, insertIndex);
+        }
+
+        View notificationPanel = root.findViewById(R.id.notification_panel);
+        if (notificationPanel != null) {
+            notificationPanel.setTranslationZ(10f);
+        }
+        View keyguardHeader = root.findViewById(R.id.keyguard_header);
+        if (keyguardHeader != null) {
+            keyguardHeader.setTranslationZ(10f);
         }
         ScrimUtils.get(mContext).setWallpaperDepthUtils(mWallpaperDepthUtils);
         mWallpaperDepthUtils.updateDepthWallpaper();

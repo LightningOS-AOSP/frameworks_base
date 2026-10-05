@@ -32,7 +32,8 @@ import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.MathUtils;
 import android.util.Log;
-import android.view.MotionEvent;
+import android.view.Display;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -132,6 +133,27 @@ public class WallpaperDepthUtils {
 
         mSpatialEffectController.attachBackgroundView(mLockScreenBackground);
         mSpatialEffectController.attachSubjectView(mLockScreenSubject);
+
+        mLockScreenSubject.addOnLayoutChangeListener((v, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            int width = right - left;
+            int height = bottom - top;
+            int oldWidth = oldRight - oldLeft;
+            int oldHeight = oldBottom - oldTop;
+            if (width != oldWidth || height != oldHeight) {
+                updateDepthWallpaperVisibility();
+            }
+        });
+
+        WallpaperManager wm = WallpaperManager.getInstance(mContext);
+        if (wm != null) {
+            try {
+                wm.addOnColorsChangedListener(mWallpaperColorsListener,
+                        new Handler(Looper.getMainLooper()));
+                mWallpaperColorsListenerRegistered = true;
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public static WallpaperDepthUtils getInstance(Context context, ScrimController scrimController) {
@@ -301,6 +323,42 @@ public class WallpaperDepthUtils {
                 && !mWallpaperSubjectPath.isEmpty();
     }
 
+    private boolean isLandscape() {
+        try {
+            WindowManager wm = mContext.getSystemService(WindowManager.class);
+            if (wm != null) {
+                Rect bounds = wm.getCurrentWindowMetrics().getBounds();
+                if (bounds != null && bounds.width() > bounds.height()) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            Display display = mContext.getDisplay();
+            if (display != null) {
+                int rotation = display.getRotation();
+                if (rotation == Surface.ROTATION_90
+                        || rotation == Surface.ROTATION_270) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (mLockScreenSubject != null && mLockScreenSubject.isAttachedToWindow()) {
+            int w = mLockScreenSubject.getWidth();
+            int h = mLockScreenSubject.getHeight();
+            if (w > 0 && h > 0 && w > h) {
+                return true;
+            }
+        }
+
+        return mContext.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
     private boolean canShowDepthWallpaper() {
         ScrimState currentState = mScrimController.getState();
         MediaViewController mediaViewController = MediaViewController.getOrNull();
@@ -314,7 +372,7 @@ public class WallpaperDepthUtils {
                 && !mDynamicBarExpanded
                 && !mUnlocking
                 && currentState == ScrimState.KEYGUARD
-                && mContext.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE
+                && !isLandscape()
                 && !albumArtVisible;
     }
 
@@ -354,21 +412,55 @@ public class WallpaperDepthUtils {
         Rect displayBounds = mContext.getSystemService(WindowManager.class)
                 .getCurrentWindowMetrics()
                 .getBounds();
-        DisplayMetrics displayMetrics = mContext.getResources().getDisplayMetrics();
+
+        DisplayMetrics displayMetrics =
+                mContext.getResources().getDisplayMetrics();
+
+        int targetWidth = Math.min(displayBounds.width(), displayBounds.height());
+        int targetHeight = Math.max(displayBounds.width(), displayBounds.height());
+
         float xOffsetPx = xOffsetDp * displayMetrics.density;
         float yOffsetPx = yOffsetDp * displayMetrics.density;
-        float ratioW = displayBounds.width() / (float) wallpaperBitmap.getWidth();
-        float ratioH = displayBounds.height() / (float) wallpaperBitmap.getHeight();
-        int desiredHeight = Math.round(Math.max(ratioH, ratioW) * wallpaperBitmap.getHeight());
-        int desiredWidth = Math.round(Math.max(ratioH, ratioW) * wallpaperBitmap.getWidth());
+
+        float ratioW = targetWidth
+                / (float) wallpaperBitmap.getWidth();
+        float ratioH = targetHeight
+                / (float) wallpaperBitmap.getHeight();
+
+        int desiredHeight = Math.round(
+                Math.max(ratioH, ratioW) * wallpaperBitmap.getHeight());
+        int desiredWidth = Math.round(
+                Math.max(ratioH, ratioW) * wallpaperBitmap.getWidth());
+
         desiredHeight = Math.max(desiredHeight, 0);
         desiredWidth = Math.max(desiredWidth, 0);
-        Bitmap scaledWallpaperBitmap = Bitmap.createScaledBitmap(wallpaperBitmap, desiredWidth, desiredHeight, true);
-        int xPixelShift = Math.max((desiredWidth - displayBounds.width()) / 2, 0) - Math.round(xOffsetPx);
-        int yPixelShift = Math.max((desiredHeight - displayBounds.height()) / 2, 0) - Math.round(yOffsetPx);
-        int cropWidth = Math.min(displayBounds.width(), scaledWallpaperBitmap.getWidth() - xPixelShift);
-        int cropHeight = Math.min(displayBounds.height(), scaledWallpaperBitmap.getHeight() - yPixelShift);
-        scaledWallpaperBitmap = Bitmap.createBitmap(scaledWallpaperBitmap, Math.max(xPixelShift, 0), Math.max(yPixelShift, 0), cropWidth, cropHeight);
+
+        Bitmap scaledWallpaperBitmap = Bitmap.createScaledBitmap(
+                wallpaperBitmap, desiredWidth, desiredHeight, true);
+
+        int xPixelShift = Math.max(
+                (desiredWidth - targetWidth) / 2, 0)
+                - Math.round(xOffsetPx);
+
+        int yPixelShift = Math.max(
+                (desiredHeight - targetHeight) / 2, 0)
+                - Math.round(yOffsetPx);
+
+        int cropWidth = Math.min(
+                targetWidth,
+                scaledWallpaperBitmap.getWidth() - xPixelShift);
+
+        int cropHeight = Math.min(
+                targetHeight,
+                scaledWallpaperBitmap.getHeight() - yPixelShift);
+
+        scaledWallpaperBitmap = Bitmap.createBitmap(
+                scaledWallpaperBitmap,
+                Math.max(xPixelShift, 0),
+                Math.max(yPixelShift, 0),
+                cropWidth,
+                cropHeight);
+
         return scaledWallpaperBitmap;
     }
 
