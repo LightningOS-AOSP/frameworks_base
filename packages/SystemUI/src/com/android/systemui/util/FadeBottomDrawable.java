@@ -114,6 +114,10 @@ public class FadeBottomDrawable extends Drawable {
                 + (bounds.width() - mBitmap.getWidth() * scale) * 0.5f;
         float dy = bounds.top
                 + (bounds.height() - mBitmap.getHeight() * scale) * 0.5f;
+        android.util.Log.i("FadeBottomDrawable", "=== FADE BOTTOM DRAWABLE DIAGNOSTIC ===");
+        android.util.Log.i("FadeBottomDrawable", "bounds: " + bounds + ", bitmap: " + mBitmap.getWidth() + "x" + mBitmap.getHeight());
+        android.util.Log.i("FadeBottomDrawable", "scale: " + scale + ", dx: " + dx + ", dy: " + dy);
+        android.util.Log.i("FadeBottomDrawable", "========================================");
         Matrix matrix = new Matrix();
         matrix.setScale(scale, scale);
         matrix.postTranslate(dx, dy);

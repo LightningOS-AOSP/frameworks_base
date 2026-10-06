@@ -540,16 +540,18 @@ public class WallpaperDepthUtils {
                 if (wallpaperFrame.width() > 0 && wallpaperFrame.height() > 0) {
                     float screenRatio = targetWidth / (float) targetHeight;
                     float frameRatio = wallpaperFrame.width() / (float) wallpaperFrame.height();
+                    boolean isRtl = mContext.getResources().getConfiguration().getLayoutDirection()
+                            == View.LAYOUT_DIRECTION_RTL;
                     Rect visibleCrop;
-                    if (frameRatio > screenRatio) {
+                    if (frameRatio >= screenRatio) {
                         int visibleW = Math.round(wallpaperFrame.height() * screenRatio);
-                        int leftOffset = (wallpaperFrame.width() - visibleW) / 2;
+                        int visibleLeft = isRtl ? (wallpaperFrame.right - visibleW) : wallpaperFrame.left;
                         visibleCrop = new Rect(
-                                wallpaperFrame.left + leftOffset,
+                                visibleLeft,
                                 wallpaperFrame.top,
-                                wallpaperFrame.left + leftOffset + visibleW,
+                                visibleLeft + visibleW,
                                 wallpaperFrame.bottom);
-                    } else if (frameRatio < screenRatio) {
+                    } else {
                         int visibleH = Math.round(wallpaperFrame.width() / screenRatio);
                         int topOffset = (wallpaperFrame.height() - visibleH) / 2;
                         visibleCrop = new Rect(
@@ -557,9 +559,14 @@ public class WallpaperDepthUtils {
                                 wallpaperFrame.top + topOffset,
                                 wallpaperFrame.right,
                                 wallpaperFrame.top + topOffset + visibleH);
-                    } else {
-                        visibleCrop = wallpaperFrame;
                     }
+
+                    Log.i("WallpaperDepthUtils", "=== DEPTH WALLPAPER DIAGNOSTIC LOG (BACKGROUND CROP) ===");
+                    Log.i("WallpaperDepthUtils", "bg bitmap: width=" + bitmap.getWidth() + ", height=" + bitmap.getHeight());
+                    Log.i("WallpaperDepthUtils", "display: width=" + targetWidth + ", height=" + targetHeight + ", screenRatio=" + screenRatio + ", frameRatio=" + frameRatio + ", isRtl=" + isRtl);
+                    Log.i("WallpaperDepthUtils", "wallpaperFrame: left=" + wallpaperFrame.left + ", top=" + wallpaperFrame.top + ", right=" + wallpaperFrame.right + ", bottom=" + wallpaperFrame.bottom);
+                    Log.i("WallpaperDepthUtils", "visibleCrop: left=" + visibleCrop.left + ", top=" + visibleCrop.top + ", right=" + visibleCrop.right + ", bottom=" + visibleCrop.bottom);
+                    Log.i("WallpaperDepthUtils", "==========================================================");
 
                     int cl = Math.max(0, Math.min(visibleCrop.left, bitmap.getWidth() - 1));
                     int ct = Math.max(0, Math.min(visibleCrop.top, bitmap.getHeight() - 1));
@@ -603,7 +610,17 @@ public class WallpaperDepthUtils {
                     Log.d("LoadWallpaperTask", "Failed to decode bitmap from file");
                     return null;
                 }
-                Bitmap resizedBitmap = getResizedBitmap(bitmap, mOffsetX, mOffsetY);
+
+                Bitmap resizedBitmap =
+                        getResizedBitmap(bitmap, mOffsetX, mOffsetY);
+
+                Log.i("WallpaperDepthUtils", "=== LOAD SUBJECT DIAGNOSTIC ===");
+                Log.i("WallpaperDepthUtils", "subject raw file: width=" + bitmap.getWidth() + ", height=" + bitmap.getHeight());
+                Log.i("WallpaperDepthUtils", "subject resized: width=" + (resizedBitmap != null ? resizedBitmap.getWidth() : 0)
+                        + ", height=" + (resizedBitmap != null ? resizedBitmap.getHeight() : 0)
+                        + ", mOffsetX=" + mOffsetX + ", mOffsetY=" + mOffsetY);
+                Log.i("WallpaperDepthUtils", "===============================");
+
                 if (resizedBitmap == null) {
                     Log.d("LoadWallpaperTask", "Failed to decode resized bitmap from file");
                     return null;
