@@ -1152,10 +1152,6 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces,
             root.addView(depthWallpaperView, insertIndex);
         }
 
-        View notificationPanel = root.findViewById(R.id.notification_panel);
-        if (notificationPanel != null) {
-            notificationPanel.setTranslationZ(10f);
-        }
         View keyguardHeader = root.findViewById(R.id.keyguard_header);
         if (keyguardHeader != null) {
             keyguardHeader.setTranslationZ(10f);
