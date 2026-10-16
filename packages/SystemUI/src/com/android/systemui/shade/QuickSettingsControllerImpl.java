@@ -636,7 +636,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
                         MotionEvent.BUTTON_SECONDARY) || event.isButtonPressed(
                         MotionEvent.BUTTON_TERTIARY));
 
-        final boolean separateShade = mAxQsShadePolicy.isSeparateShade();
+        final boolean separateShade = isMistSeparateShade();
         final float w = separateShade
                 ? mPanelView.getMeasuredWidth()
                 : mQs.getView().getMeasuredWidth();
@@ -701,6 +701,14 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
         return mQs != null;
     }
 
+    private boolean isMistQsEnabled() {
+        return com.android.systemui.qs.flags.MistQsMode.isEnabled();
+    }
+
+    private boolean isMistSeparateShade() {
+        return isMistQsEnabled() && mAxQsShadePolicy.isSeparateShade();
+    }
+
     @Override
     public boolean isCustomizing() {
         return isQsFragmentCreated() && mQs.isCustomizing();
@@ -752,7 +760,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
                 || mSplitShadeEnabled) {
             return false;
         }
-        if (getExpanded() && yDiff < 0 && mAxQsShadePolicy.isSeparateShade()) {
+        if (getExpanded() && yDiff < 0 && isMistSeparateShade()) {
             return false;
         }
         int headerTop, headerBottom;
@@ -1054,7 +1062,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             mShadeLog.logQsExpandImmediateChanged(expandImmediate);
             mShadeRepository.setLegacyExpandImmediate(expandImmediate);
         }
-        if (!expandImmediate || mAxQsShadePolicy.isSeparateShade()) {
+        if (!expandImmediate || isMistSeparateShade()) {
             mNotificationStackScrollLayoutController.setQuickQsHidden(expandImmediate);
         }
     }
@@ -1680,7 +1688,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             flingQs(0, FLING_COLLAPSE, null, true);
         } else if (isExpansionEnabled()) {
             mLockscreenGestureLogger.write(MetricsProto.MetricsEvent.ACTION_SHADE_QS_TAP, 0, 0);
-            if (mQs != null) {
+            if (isMistQsEnabled() && mQs != null) {
                 mQs.setForceQsEvent(true);
             }
             flingQs(0, FLING_EXPAND, null, true);
@@ -1781,7 +1789,7 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
         }
         if (mTwoFingerExpandPossible && isOpenQsEvent(event) && isInStatusBar) {
             mMetricsLogger.count(COUNTER_PANEL_OPEN_QS, 1);
-            if (mQs != null) {
+            if (isMistQsEnabled() && mQs != null) {
                 mQs.setForceQsEvent(true);
             }
             setExpandImmediate(true);
@@ -2165,7 +2173,11 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
     }
 
     private void maybeResetEarlyExpansion() {
-        updateQsState();
+        if (isMistQsEnabled()) {
+            updateQsState();
+        } else {
+            resetEarlyExpansion();
+        }
     }
 
     private void resetEarlyExpansion() {

@@ -19,6 +19,7 @@ package com.android.systemui.shade
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.qs.panels.data.repository.AxQsSettingsRepository
+import com.android.systemui.qs.flags.MistQsMode
 import com.android.systemui.qs.panels.shared.model.AxQsPanelMode
 import com.android.systemui.shade.ShadeController
 import com.android.systemui.shade.domain.interactor.ShadeAnimationInteractor
@@ -64,7 +65,9 @@ constructor(
     }
 
     fun isSeparateShade(): Boolean =
-        panelMode.value == AxQsPanelMode.SEPARATE && !shadeModeInteractor.isSplitShade
+        MistQsMode.isEnabled &&
+            panelMode.value == AxQsPanelMode.SEPARATE &&
+            !shadeModeInteractor.isSplitShade
 
     fun isSeparateQuickPanelGesture(x: Float, width: Float): Boolean {
         val edgeWidth = width / 4f
