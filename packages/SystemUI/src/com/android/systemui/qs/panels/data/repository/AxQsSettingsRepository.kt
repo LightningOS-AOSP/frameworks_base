@@ -16,6 +16,7 @@
 
 package com.android.systemui.qs.panels.data.repository
 
+import android.provider.Settings
 import com.android.systemui.dagger.SysUISingleton
 import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.dagger.qualifiers.Background
@@ -32,6 +33,7 @@ import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderStyle
 import com.android.systemui.user.data.repository.UserRepository
 import com.android.systemui.util.settings.SecureSettings
 import com.android.systemui.util.settings.SettingsProxyExt.observerFlow
+import com.android.systemui.util.settings.SystemSettings
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +54,7 @@ class AxQsSettingsRepository
 @Inject
 constructor(
     private val secureSettings: SecureSettings,
+    private val systemSettings: SystemSettings,
     private val userRepository: UserRepository,
     @Application private val applicationScope: CoroutineScope,
     @Background private val backgroundDispatcher: CoroutineDispatcher,
@@ -83,10 +86,33 @@ constructor(
     val splitShadeControlPositions: StateFlow<Map<String, AxQsGridPosition>> = positionsSetting(SPLIT_SHADE_CONTROL_POSITIONS)
 
     val panelMode: StateFlow<AxQsPanelMode> =
-        intSetting(PANEL_MODE, AxQsPanelMode.TOGETHER.settingValue)
+        userRepository.selectedUserInfo
+            .flatMapLatest { user ->
+                systemSettings
+                    .observerFlow(user.id, Settings.System.QS_SPLIT_SHADE)
+                    .onStart { emit(Unit) }
+                    .map {
+                        systemSettings.getIntForUser(
+                            Settings.System.QS_SPLIT_SHADE,
+                            0,
+                            user.id,
+                        )
+                    }
+            }
+            .flowOn(backgroundDispatcher)
             .map(AxQsPanelMode::fromSetting)
             .distinctUntilChanged()
-            .stateIn(applicationScope, SharingStarted.Eagerly, AxQsPanelMode.TOGETHER)
+            .stateIn(
+                applicationScope,
+                SharingStarted.Eagerly,
+                AxQsPanelMode.fromSetting(
+                    systemSettings.getIntForUser(
+                        Settings.System.QS_SPLIT_SHADE,
+                        0,
+                        userRepository.getSelectedUserInfo().id,
+                    ),
+                ),
+            )
 
     val quickPanelOnLeft: StateFlow<Boolean> = boolSetting(QUICK_PANEL_ON_LEFT, false)
     val showWeather: StateFlow<Boolean> = boolSetting(SHOW_WEATHER, true)
@@ -123,7 +149,11 @@ constructor(
     }
 
     fun setPanelMode(mode: AxQsPanelMode) {
-        putInt(PANEL_MODE, mode.settingValue)
+        systemSettings.putIntForUser(
+            Settings.System.QS_SPLIT_SHADE,
+            mode.settingValue,
+            userRepository.getSelectedUserInfo().id,
+        )
     }
 
     fun setQuickPanelOnLeft(onLeft: Boolean) {
