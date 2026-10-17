@@ -191,7 +191,7 @@ internal fun ContentScope.AxQsMixedGrid(
             (it.value as? AxQsGridValue.Tile)?.viewModel
         }
     val rowHeight = AxTileDefaults.TileHeight * LocalTileScale.current
-    val spacing = AxTileDefaults.TileSpacing * LocalTileScale.current
+    val spacing = LocalAxQsSpacing.current.tileGap.dp * LocalTileScale.current
     val qsEntranceProgress = {
         ((viewModel.expansionState.progress - QS_ENTRANCE_START) / (1f - QS_ENTRANCE_START))
             .coerceIn(0f, 1f)
@@ -267,11 +267,7 @@ internal fun ContentScope.AxQsMixedGrid(
 
     QuickSettingsTheme {
         BoxWithConstraints(modifier) {
-            val portraitPadding =
-                maxWidth * AxQuickSettingsLayoutDefaults.PORTRAIT_SIDE_PADDING_FRACTION
-            val splitShadePadding =
-                maxWidth * AxQuickSettingsLayoutDefaults.LANDSCAPE_SIDE_PADDING_FRACTION
-            val contentPadding = if (splitShade) splitShadePadding else portraitPadding
+            val contentPadding = LocalAxQsSpacing.current.sidePadding.dp
             val gridWidth = (maxWidth - contentPadding * 2).coerceAtLeast(0.dp)
             val contentTopPadding =
                 if (splitShade) {

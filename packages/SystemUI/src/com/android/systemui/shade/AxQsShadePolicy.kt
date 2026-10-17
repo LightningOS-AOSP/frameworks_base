@@ -70,8 +70,8 @@ constructor(
             !shadeModeInteractor.isSplitShade
 
     fun isSeparateQuickPanelGesture(x: Float, width: Float): Boolean {
-        val edgeWidth = width / 4f
-        return if (quickPanelOnLeft.value) x < edgeWidth else x > width - edgeWidth
+        val midpoint = width / 2f
+        return if (quickPanelOnLeft.value) x < midpoint else x >= midpoint
     }
 
     fun collapseSeparateShade(): Boolean {

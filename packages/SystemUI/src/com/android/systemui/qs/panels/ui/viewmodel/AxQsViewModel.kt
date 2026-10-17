@@ -32,8 +32,10 @@ import com.android.systemui.qs.panels.shared.model.AxQsGridSection
 import com.android.systemui.qs.panels.shared.model.AxQsLayout
 import com.android.systemui.qs.panels.shared.model.AxQsPanelMode
 import com.android.systemui.qs.panels.shared.model.AxQsSpan
+import com.android.systemui.qs.panels.shared.model.AxQsTileStyle
 import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderKey
 import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderStyle
+import com.android.systemui.qs.panels.shared.model.LunarisQsSpacing
 import com.android.systemui.res.R
 import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.shade.domain.interactor.ShadeInteractor
@@ -205,6 +207,18 @@ constructor(
             traceName = "showWeather",
             initialValue = true,
             source = repository.showWeather,
+        )
+    val tileStyle by
+        hydrator.hydratedStateOf(
+            traceName = "tileStyle",
+            initialValue = AxQsTileStyle.PILL,
+            source = repository.tileStyle,
+        )
+    val spacing by
+        hydrator.hydratedStateOf(
+            traceName = "spacing",
+            initialValue = LunarisQsSpacing(),
+            source = repository.spacing,
         )
     private val verticalSliderStyles by
         hydrator.hydratedStateOf(

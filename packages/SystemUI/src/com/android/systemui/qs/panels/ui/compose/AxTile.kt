@@ -85,6 +85,7 @@ import com.android.systemui.lifecycle.rememberViewModel
 import com.android.systemui.qs.composefragment.LocalBlurEnabled
 import com.android.systemui.qs.flags.QsDetailedView
 import com.android.systemui.qs.panels.shared.model.AxQsSpan
+import com.android.systemui.qs.panels.shared.model.AxQsTileStyle
 import com.android.systemui.qs.panels.ui.compose.BounceableInfo
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.InactiveTileCornerRadius
@@ -152,10 +153,12 @@ fun ContentScope.AxTile(
             }
 
         val defaultTileShape =
-            if (span.columns > 1 || span.rows > 1) {
-                RoundedCornerShape(AxQsControlCornerRadius)
-            } else {
-                AxTileColorsDefaults.animateTileShapeAsState(uiState.visualState).value
+            when {
+                span.columns > 1 || span.rows > 1 ->
+                    RoundedCornerShape(AxQsControlCornerRadius)
+                LocalAxQsTileStyle.current == AxQsTileStyle.ROUNDED_SQUARE ->
+                    RoundedCornerShape(AxQsControlCornerRadius)
+                else -> AxTileColorsDefaults.animateTileShapeAsState(uiState.visualState).value
             }
         val tileShape = tileShapeOverride ?: defaultTileShape
         val animatedColor by animateColorAsState(colors.background, label = "QSTileBackgroundColor")

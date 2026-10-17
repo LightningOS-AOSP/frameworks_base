@@ -66,6 +66,8 @@ import com.android.systemui.Flags
 import com.android.systemui.common.shared.model.Icon
 import com.android.systemui.qs.composefragment.LocalBlurEnabled
 import com.android.systemui.qs.panels.shared.model.AxQsSpan
+import com.android.systemui.qs.panels.shared.model.AxQsTileStyle
+import com.android.systemui.qs.panels.shared.model.LunarisQsSpacing
 import com.android.systemui.qs.panels.shared.model.QSTileIconShapes
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.longPressLabelSettings
@@ -77,6 +79,8 @@ import com.android.systemui.qs.panels.ui.viewmodel.AccessibilityUiState
 import com.android.systemui.qs.ui.compose.borderOnFocus
 
 val LocalTileScale = staticCompositionLocalOf { 1f }
+val LocalAxQsTileStyle = staticCompositionLocalOf { AxQsTileStyle.PILL }
+val LocalAxQsSpacing = staticCompositionLocalOf { LunarisQsSpacing() }
 
 @Composable
 fun computeTileScale(): Float {
