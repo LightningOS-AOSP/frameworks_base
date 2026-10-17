@@ -77,6 +77,7 @@ import com.android.systemui.qs.panels.ui.compose.AxLargeTileContent
 import com.android.systemui.qs.panels.ui.compose.AxQsControlCornerRadius
 import com.android.systemui.qs.panels.ui.compose.AxQsPagerIndicator
 import com.android.systemui.qs.panels.ui.compose.AxTileDefaults
+import com.android.systemui.qs.panels.ui.compose.LocalAxQsSpacing
 import com.android.systemui.qs.panels.ui.compose.LocalTileScale
 import com.android.systemui.qs.panels.ui.compose.axQsControlShape
 import com.android.systemui.qs.panels.ui.compose.axQsGridCellWidth
@@ -159,7 +160,7 @@ internal fun AxAvailableControls(
             .map { (control, label) -> AxAddItem.Control(control, label, control.id in currentIds) }
     val tiles: List<AxAddItem> = allTiles.map { AxAddItem.Tile(it, it.tileSpec.spec in currentIds) }
     val tileGroups = remember(tiles) { groupAndSort(tiles).entries.toList() }
-    val spacing = AxTileDefaults.TileSpacing * LocalTileScale.current
+    val spacing = LocalAxQsSpacing.current.tileGap.dp * LocalTileScale.current
     PreferenceGroup(modifier = modifier.fillMaxWidth(), spacing = 2.dp) {
         settings?.let { settingsContent ->
             item { AxPickerSettingsCard(settingsContent) }
@@ -449,7 +450,7 @@ private fun AxAddItemCell(
         } else {
             null
         }
-    val spacing = AxTileDefaults.TileSpacing * LocalTileScale.current
+    val spacing = LocalAxQsSpacing.current.tileGap.dp * LocalTileScale.current
     val previewHeight = rowHeight * span.rows + spacing * (span.rows - 1)
     val verticalSlider = item is AxAddItem.Control && item.control.isVerticalSlider
     val sliderStyle =

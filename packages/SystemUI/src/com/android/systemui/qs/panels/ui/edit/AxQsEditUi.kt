@@ -125,6 +125,7 @@ import com.android.systemui.qs.panels.ui.compose.AxQuickSettingsLayoutDefaults
 import com.android.systemui.qs.panels.ui.compose.AxQsControlCornerRadius
 import com.android.systemui.qs.panels.ui.compose.AxQsGrid
 import com.android.systemui.qs.panels.ui.compose.AxTileDefaults
+import com.android.systemui.qs.panels.ui.compose.LocalAxQsSpacing
 import com.android.systemui.qs.panels.ui.compose.LocalTileScale
 import com.android.systemui.qs.panels.ui.compose.axQsControlShape
 import com.android.systemui.qs.panels.ui.compose.axQsGridCellWidth
@@ -537,7 +538,7 @@ private fun AxEditableGrid(
 
     val scale = LocalTileScale.current
     val rowHeight = AxTileDefaults.TileHeight * scale
-    val spacing = AxTileDefaults.TileSpacing * scale
+    val spacing = LocalAxQsSpacing.current.tileGap.dp * scale
     val fitsLayout: (List<AxQsGridItem<AxEditGridValue>>) -> Boolean = { items ->
         val controls = items.filter { it.section == AxQsGridSection.CONTROLS }
         val tileCount = items.count { it.section == AxQsGridSection.TILES }

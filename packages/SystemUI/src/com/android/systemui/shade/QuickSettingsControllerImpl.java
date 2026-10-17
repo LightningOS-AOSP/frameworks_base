@@ -222,6 +222,9 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
      */
     private int mTransitionToFullShadePosition;
     private boolean mCollapsedOnDown;
+    private long mSeparateShadeGestureDownTime = -1L;
+    private boolean mSeparateShadeGesturePending;
+    private boolean mSeparateShadeGestureOpensQs;
     private float mShadeExpandedHeight = 0;
     private boolean mLastShadeFlingWasExpanding;
 
@@ -1042,8 +1045,20 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
         }
     }
 
-    void setCollapsedOnDown(boolean collapsedOnDown) {
+    void initDownStates(MotionEvent event, boolean collapsedOnDown,
+            boolean isSynthesizedDown) {
         mCollapsedOnDown = collapsedOnDown;
+        if (mSeparateShadeGestureDownTime == event.getDownTime()) {
+            return;
+        }
+        mSeparateShadeGestureDownTime = event.getDownTime();
+        mSeparateShadeGesturePending = !isSynthesizedDown
+                && !mDozing
+                && mBarState == StatusBarState.SHADE
+                && isMistSeparateShade()
+                && (collapsedOnDown || (event.getY() < mStatusBarMinHeight
+                        && mPanelViewControllerLazy.get().isClosing()));
+        mSeparateShadeGestureOpensQs = mSeparateShadeGesturePending && isOpenQsEvent(event);
     }
 
     void setShadeExpansion(float expandedHeight, float expandedFraction) {
@@ -1720,6 +1735,29 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
     /** handles touches in Qs panel area */
     boolean handleTouch(MotionEvent event, boolean isFullyCollapsed,
             boolean isShadeOrQsHeightAnimationRunning) {
+        return handleTouch(event, isFullyCollapsed, isShadeOrQsHeightAnimationRunning,
+                false /* isSynthesizedDown */);
+    }
+
+    boolean handleTouch(MotionEvent event, boolean isFullyCollapsed,
+            boolean isShadeOrQsHeightAnimationRunning, boolean isSynthesizedDown) {
+        final int action = event.getActionMasked();
+        boolean separateShadeGesturePrepared = false;
+        if (mSeparateShadeGesturePending) {
+            mSeparateShadeGesturePending = false;
+            if (event.getDownTime() == mSeparateShadeGestureDownTime
+                    && !mDozing && mBarState == StatusBarState.SHADE && isMistSeparateShade()
+                    && (action == MotionEvent.ACTION_DOWN
+                            || action == MotionEvent.ACTION_MOVE
+                            || action == MotionEvent.ACTION_POINTER_DOWN)) {
+                prepareSplitShade(mSeparateShadeGestureOpensQs);
+                mTwoFingerExpandPossible = isExpansionEnabled();
+                separateShadeGesturePrepared = true;
+                if (isExpandImmediate()) {
+                    mMetricsLogger.count(COUNTER_PANEL_OPEN_QS, 1);
+                }
+            }
+        }
         if (isTrackpadThreeFingerSwipe(event)) {
             return false;
         }
@@ -1742,7 +1780,10 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
                 mStatusBarLongPressGestureDetector.get().handleTouch(event);
             }
         }
-        final int action = event.getActionMasked();
+        if (separateShadeGesturePrepared
+                && action != MotionEvent.ACTION_POINTER_DOWN) {
+            return false;
+        }
         boolean collapsedQs = !getExpanded() && !mSplitShadeEnabled;
         boolean expansionEnabled = isExpansionEnabled();
         if (!expansionEnabled) {
@@ -1785,7 +1826,8 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             maybeResetEarlyExpansion();
         }
         if (action == MotionEvent.ACTION_DOWN && isFullyCollapsed && isExpansionEnabled()) {
-            mTwoFingerExpandPossible = true;
+            mTwoFingerExpandPossible = !isSynthesizedDown
+                    || mBarState != StatusBarState.SHADE || !isMistSeparateShade();
         }
         if (mTwoFingerExpandPossible && isOpenQsEvent(event) && isInStatusBar) {
             mMetricsLogger.count(COUNTER_PANEL_OPEN_QS, 1);
@@ -1804,6 +1846,30 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
             setListening(true);
         }
         return false;
+    }
+
+    private void prepareSplitShade(boolean openQs) {
+        if (!isMistSeparateShade() || mBarState != StatusBarState.SHADE) {
+            return;
+        }
+        closeQs();
+        setTracking(false);
+        mConflictingExpansionGesture = false;
+        mTwoFingerExpandPossible = false;
+        openQs &= isExpansionEnabled();
+        if (mQs != null) {
+            mQs.setForceQsEvent(openQs);
+        }
+        setExpandImmediate(openQs);
+        mNotificationStackScrollLayoutController.setShouldShowShelfOnly(openQs);
+        if (openQs) {
+            if (mExpansionHeightSetToMaxListener != null) {
+                mExpansionHeightSetToMaxListener.onExpansionHeightSetToMax(false);
+            }
+            setListening(true);
+        }
+        updateExpansion();
+        updateQsState();
     }
 
     private void handleDown(MotionEvent event) {

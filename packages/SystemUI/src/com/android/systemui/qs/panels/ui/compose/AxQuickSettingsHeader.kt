@@ -108,6 +108,7 @@ private val AxQuickSettingsHeaderContent = SceneKey("AxQuickSettingsHeader")
 fun AxQuickSettingsHeader(
     viewModel: ShadeHeaderViewModel,
     isTransitioning: Boolean,
+    sidePadding: Dp,
     modifier: Modifier = Modifier,
 ) {
     val foregroundColor = MaterialTheme.colorScheme.onSurface
@@ -116,13 +117,6 @@ fun AxQuickSettingsHeader(
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val landscape =
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val sidePadding =
-            maxWidth *
-                if (landscape) {
-                    AxQuickSettingsLayoutDefaults.LANDSCAPE_SIDE_PADDING_FRACTION
-                } else {
-                    AxQuickSettingsLayoutDefaults.PORTRAIT_SIDE_PADDING_FRACTION
-                }
         val startContent: @Composable () -> Unit = {
             Column(
                 modifier = Modifier.padding(start = sidePadding),

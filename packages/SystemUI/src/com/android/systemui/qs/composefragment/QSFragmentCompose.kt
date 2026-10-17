@@ -153,6 +153,8 @@ import com.android.systemui.qs.composefragment.ui.toEditMode
 import com.android.systemui.qs.composefragment.viewmodel.QSFragmentComposeViewModel
 import com.android.systemui.qs.panels.shared.model.QSFragmentComposeClippingTableLog
 import com.android.systemui.qs.panels.ui.compose.AxQuickSettingsHeader
+import com.android.systemui.qs.panels.ui.compose.LocalAxQsSpacing
+import com.android.systemui.qs.panels.ui.compose.LocalAxQsTileStyle
 import com.android.systemui.qs.panels.ui.compose.EditMode
 import com.android.systemui.qs.panels.ui.compose.LocalAxQsExpansionProgress
 import com.android.systemui.qs.panels.ui.compose.QuickQuickSettings
@@ -368,6 +370,8 @@ constructor(
                     CompositionLocalProvider(
                         LocalBlurEnabled provides blurEnabled,
                         LocalRingerSliderViewModel provides ringerSliderViewModel,
+                        LocalAxQsTileStyle provides axQsViewModel.tileStyle,
+                        LocalAxQsSpacing provides axQsViewModel.spacing,
                     ) {
                         WithStatusIconContext(tintedIconManagerFactory) {
                             CollapsableQuickSettingsSTL()
@@ -1109,6 +1113,7 @@ constructor(
         AxQuickSettingsHeader(
             viewModel = headerViewModel,
             isTransitioning = isTransitioning,
+            sidePadding = axQsViewModel.spacing.sidePadding.dp,
             modifier =
                 modifier
                     .fillMaxWidth()
@@ -1137,7 +1142,7 @@ constructor(
             } else {
                 statusBarHeight + 24.dp
             }
-        return displayCutoutTop + headerHeight + QuickSettingsShade.Dimensions.ShortPadding
+        return displayCutoutTop + headerHeight + LocalAxQsSpacing.current.topPadding.dp
     }
 
     private fun useOverlayShadeHeader() = true
