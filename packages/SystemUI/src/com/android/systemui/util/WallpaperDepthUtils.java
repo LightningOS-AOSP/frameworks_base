@@ -363,6 +363,10 @@ public class WallpaperDepthUtils {
         return mLockScreenSubject;
     }
 
+    public FrameLayout getBackgroundView() {
+        return mLockScreenBackground;
+    }
+
     private boolean isDWallpaperEnabled() {
         return mDWallpaperEnabled && mWallpaperSubjectPath != null
                 && !mWallpaperSubjectPath.isEmpty();

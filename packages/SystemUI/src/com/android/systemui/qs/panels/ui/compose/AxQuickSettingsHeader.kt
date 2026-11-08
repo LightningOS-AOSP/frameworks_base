@@ -348,10 +348,9 @@ fun AxQuickSettingsClock(
     val textColor = MaterialTheme.colorScheme.onSurface
     when (clockStyle) {
         0 -> AxHeaderClock(onClick = viewModel::onClockClicked, textColor = textColor, modifier = modifier)
-        1 -> AxCustomClockView(layoutRes = R.layout.qs_header_clock_chip, onClick = viewModel::onClockClicked, modifier = modifier)
-        2 -> AxCustomClockView(layoutRes = R.layout.qs_header_clock_oos, onClick = viewModel::onClockClicked, modifier = modifier)
-        3 -> AxCustomClockView(layoutRes = R.layout.qs_header_clock_analog, onClick = viewModel::onClockClicked, modifier = modifier)
-        else -> AxCustomClockView(layoutRes = R.layout.qs_header_clock_simple, onClick = viewModel::onClockClicked, modifier = modifier)
+        // TODO: Restore custom QS header clock layouts (chip/oos/analog/simple) from the
+        // original Axion/Lightning port; fall back to the default clock until then.
+        else -> AxHeaderClock(onClick = viewModel::onClockClicked, textColor = textColor, modifier = modifier)
     }
 }
 
