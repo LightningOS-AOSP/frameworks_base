@@ -1060,7 +1060,7 @@ constructor(
                     viewModel.containerViewModel.editModeViewModel.stopEditing()
                     val intent = android.content.Intent().apply {
                         setClassName("com.android.settings", "com.android.settings.SubSettings")
-                        putExtra(":settings:show_fragment", "org.mist.settings.fragments.quicksettings.PanelCustomisations")
+                        putExtra(":settings:show_fragment", "com.lightning.thunderbolt.fragments.quicksettings.PanelCustomisations")
                         putExtra(":settings:show_fragment_title", "Panel Customisations")
                         addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
