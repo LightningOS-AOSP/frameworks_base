@@ -22,6 +22,7 @@ import static com.android.systemui.util.ColorUtilKt.hexColorString;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.database.ContentObserver;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -30,6 +31,9 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.os.Handler;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -74,6 +78,15 @@ public class NotificationBackgroundView extends View implements Dumpable,
     private boolean mExpandAnimationRunning;
     private int mExpandAnimationWidth = -1;
     private int mExpandAnimationHeight = -1;
+    private static final String SETTING_ROW_TRANSPARENCY = "notification_row_transparency";
+    private static final float ROW_TRANSPARENCY_ALPHA = 0.75f;
+    private float mRowTransparency = 1f;
+    private final ContentObserver mRowTransparencyObserver = new ContentObserver(new Handler()) {
+        @Override
+        public void onChange(boolean selfChange) {
+            updateRowTransparency();
+        }
+    };
     private int mDrawableAlpha = 255;
     private final ColorStateList mLightColoredStatefulColors;
     private final ColorStateList mDarkColoredStatefulColors;
@@ -496,10 +509,45 @@ public class NotificationBackgroundView extends View implements Dumpable,
         if (mExpandAnimationRunning) {
             return;
         }
-        mBackground.setAlpha(drawableAlpha);
-        if (mBackgroundBlurDrawable != null) {
-            mBackgroundBlurDrawable.setAlpha(drawableAlpha);
+        applyDrawableAlpha();
+    }
+
+    private void applyDrawableAlpha() {
+        int alpha = Math.round(mDrawableAlpha * mRowTransparency);
+        if (mBackground != null) {
+            mBackground.setAlpha(alpha);
         }
+        if (mBackgroundBlurDrawable != null) {
+            mBackgroundBlurDrawable.setAlpha(alpha);
+        }
+    }
+
+    private float readRowTransparency() {
+        int value = Settings.System.getIntForUser(getContext().getContentResolver(),
+                SETTING_ROW_TRANSPARENCY, 0, UserHandle.USER_CURRENT);
+        return value > 0 ? ROW_TRANSPARENCY_ALPHA : 1f;
+    }
+
+    private void updateRowTransparency() {
+        mRowTransparency = readRowTransparency();
+        applyDrawableAlpha();
+        invalidate();
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        getContext().getContentResolver().registerContentObserver(
+                Settings.System.getUriFor(SETTING_ROW_TRANSPARENCY), false,
+                mRowTransparencyObserver);
+        mRowTransparency = readRowTransparency();
+        applyDrawableAlpha();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        getContext().getContentResolver().unregisterContentObserver(mRowTransparencyObserver);
+        super.onDetachedFromWindow();
     }
 
     /**
