@@ -17,7 +17,11 @@
 package com.android.systemui.qs.panels.ui.compose
 
 import android.content.Context
+import android.database.ContentObserver
 import android.graphics.drawable.Drawable
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.service.quicksettings.Tile.STATE_ACTIVE
 import android.service.quicksettings.Tile.STATE_INACTIVE
 import androidx.compose.animation.animateColorAsState
@@ -39,13 +43,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -55,6 +65,7 @@ import com.android.systemui.Flags
 import com.android.systemui.common.shared.model.Icon
 import com.android.systemui.qs.composefragment.LocalBlurEnabled
 import com.android.systemui.qs.panels.shared.model.AxQsSpan
+import com.android.systemui.qs.panels.shared.model.QSTileIconShapes
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.CommonTileDefaults.longPressLabelSettings
 import com.android.systemui.qs.panels.ui.compose.infinitegrid.LargeTileLabels
@@ -70,6 +81,45 @@ val LocalTileScale = staticCompositionLocalOf { 1f }
 fun computeTileScale(): Float {
     val sw = LocalConfiguration.current.smallestScreenWidthDp
     return (sw / 411f).coerceAtMost(1f)
+}
+
+@Composable
+private fun rememberAxQsTileIconShape(): Shape {
+    val context = LocalContext.current
+    var shapeKey by
+        remember {
+            mutableStateOf(
+                QSTileIconShapes.sanitizeKey(
+                    Settings.System.getString(
+                        context.contentResolver,
+                        QSTileIconShapes.SETTING_KEY,
+                    ),
+                ),
+            )
+        }
+
+    DisposableEffect(context) {
+        val observer =
+            object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    shapeKey =
+                        QSTileIconShapes.sanitizeKey(
+                            Settings.System.getString(
+                                context.contentResolver,
+                                QSTileIconShapes.SETTING_KEY,
+                            ),
+                        )
+                }
+            }
+        context.contentResolver.registerContentObserver(
+            Settings.System.getUriFor(QSTileIconShapes.SETTING_KEY),
+            false,
+            observer,
+        )
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+
+    return remember(shapeKey) { QSTileIconShapes.shapeForKey(shapeKey) }
 }
 
 object AxTileDefaults {
@@ -184,6 +234,7 @@ fun AxLargeTileContent(
     }
 
     val scale = LocalTileScale.current
+    val iconShape = rememberAxQsTileIconShape()
     val layoutDirection = LocalLayoutDirection.current
     val textOrigin = if (layoutDirection == LayoutDirection.Ltr) 1f else 0f
     val textLayoutDirection =
@@ -204,6 +255,7 @@ fun AxLargeTileContent(
             scale = scale,
             toggleClick = toggleClick,
             onLongClick = onLongClick,
+            iconShape = iconShape,
             modifier = Modifier.size(CommonTileDefaults.ToggleTargetSize * scale),
         )
         Spacer(Modifier.weight(1f))
@@ -234,6 +286,7 @@ private fun AxLargeTileIcon(
     scale: Float,
     toggleClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
+    iconShape: Shape,
     modifier: Modifier = Modifier,
 ) {
     val longPressLabel = longPressLabelSettings().takeIf { onLongClick != null }
@@ -250,7 +303,7 @@ private fun AxLargeTileIcon(
         )
     Box(
         modifier =
-            modifier.background(chipColor, CircleShape).thenIf(toggleClick != null) {
+            modifier.background(chipColor, iconShape).thenIf(toggleClick != null) {
                 Modifier.borderOnFocus(color = focusBorderColor, CircleShape.topEnd)
                     .combinedClickable(
                         onClick = toggleClick!!,

@@ -188,7 +188,9 @@ class ClockStyle @JvmOverloads constructor(
     override fun onTuningChanged(key: String?, newValue: String?) {
         when (key) {
             CLOCK_STYLE_KEY -> {
-                clockStyle = TunerService.parseInteger(newValue, DEFAULT_STYLE)
+                clockStyle =
+                    TunerService.parseInteger(newValue, DEFAULT_STYLE)
+                        .coerceIn(CLOCK_LAYOUTS.indices)
                 if (clockStyle != 0) {
                     Settings.Secure.putIntForUser(
                         context.contentResolver,
