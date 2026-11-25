@@ -656,7 +656,8 @@ public class QuickSettingsControllerImpl implements QuickSettingsController, Dum
                     break;
             }
         }
-        showQsOverride &= mBarState == StatusBarState.SHADE;
+        showQsOverride &= mBarState == StatusBarState.SHADE
+                || (separateShade && mBarState == KEYGUARD);
 
         return twoFingerDrag || showQsOverride || stylusButtonClickDrag || mouseButtonClickDrag;
     }

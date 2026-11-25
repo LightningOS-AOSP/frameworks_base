@@ -20,7 +20,6 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.android.systemui.common.ui.domain.interactor.ConfigurationInteractor
 import com.android.systemui.lifecycle.ExclusiveActivatable
 import com.android.systemui.lifecycle.Hydrator
 import com.android.systemui.qs.QSHost
@@ -31,7 +30,6 @@ import com.android.systemui.qs.panels.shared.model.AxQsGridLayout
 import com.android.systemui.qs.panels.shared.model.AxQsGridPosition
 import com.android.systemui.qs.panels.shared.model.AxQsGridSection
 import com.android.systemui.qs.panels.shared.model.AxQsLayout
-import com.android.systemui.qs.panels.shared.model.AxQsLayoutPadding
 import com.android.systemui.qs.panels.shared.model.AxQsPanelMode
 import com.android.systemui.qs.panels.shared.model.AxQsSpan
 import com.android.systemui.qs.panels.shared.model.AxQsVerticalSliderKey
@@ -40,13 +38,11 @@ import com.android.systemui.res.R
 import com.android.systemui.shade.ShadeDisplayAware
 import com.android.systemui.shade.domain.interactor.ShadeInteractor
 import javax.inject.Inject
-import kotlinx.coroutines.flow.map
 
 class AxQsViewModel
 @Inject
 constructor(
     private val repository: AxQsSettingsRepository,
-    configurationInteractor: ConfigurationInteractor,
     shadeInteractor: ShadeInteractor,
     columnsRepository: QSColumnsRepository,
     @ShadeDisplayAware private val context: Context,
@@ -65,15 +61,6 @@ constructor(
             initialValue =
                 context.resources.getInteger(R.integer.quick_settings_split_shade_num_columns),
             source = columnsRepository.splitShadeColumns,
-        )
-    private val screenWidthDp by
-        hydrator.hydratedStateOf(
-            traceName = "screenWidthDp",
-            initialValue = context.resources.configuration.screenWidthDp,
-            source =
-                configurationInteractor.configurationValues.map { configuration ->
-                    configuration.screenWidthDp
-                },
         )
     val defaultTileSpecs: List<String>
         get() = defaultTileIds
@@ -253,10 +240,7 @@ constructor(
         if (layout.section == AxQsGridSection.CONTROLS) {
             return 2..4
         }
-        val configuredRange = layout.columnRange(defaultColumns(layout))
-        val safeMax = maxColumnsForWidth(layout)
-        val last = minOf(configuredRange.last, safeMax).coerceAtLeast(configuredRange.first)
-        return configuredRange.first..last
+        return layout.columnRange()
     }
 
     fun rows(layout: AxQsGridLayout): Int {
@@ -487,28 +471,7 @@ constructor(
     private fun hasSplitShadeOrder(): Boolean =
         splitShadeControlOrder != null || splitShadeTileOrder != null
 
-    private fun maxColumnsForWidth(layout: AxQsGridLayout): Int {
-        val sideFraction =
-            if (layout.isSplitShade) {
-                AxQsLayoutPadding.LANDSCAPE_SIDE_FRACTION
-            } else {
-                AxQsLayoutPadding.PORTRAIT_SIDE_FRACTION
-            }
-        val contentWidth = screenWidthDp * (1f - sideFraction * 2f)
-        val gridWidth =
-            if (layout.isSplitShade) {
-                (contentWidth - AxQsLayoutPadding.LANDSCAPE_SPLIT_GRID_SPACING_DP) / 2f
-            } else {
-                contentWidth
-            }
-        return ((gridWidth + GRID_SPACING_DP) / (MIN_TILE_WIDTH_DP + GRID_SPACING_DP))
-            .toInt()
-            .coerceAtLeast(1)
-    }
-
     private companion object {
-        const val MIN_TILE_WIDTH_DP = 56f
-        const val GRID_SPACING_DP = 16f
         const val MIN_TILE_GRID_ROWS = 1
         const val MAX_TILE_GRID_ROWS = 3
         const val DEFAULT_CONTROL_COLUMNS = 4

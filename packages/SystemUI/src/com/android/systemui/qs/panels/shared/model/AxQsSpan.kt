@@ -261,8 +261,8 @@ enum class AxQsGridLayout(
     val showTileLabelsByDefault: Boolean
         get() = supportsTileLabels
 
-    fun columnRange(defaultColumns: Int): IntRange {
-        return (defaultColumns - 1).coerceAtLeast(MIN_COLUMNS)..(defaultColumns + 1)
+    fun columnRange(): IntRange {
+        return MIN_COLUMNS..MAX_COLUMNS
     }
 
     companion object {
@@ -271,6 +271,7 @@ enum class AxQsGridLayout(
         }
 
         private const val MIN_COLUMNS = 2
+        private const val MAX_COLUMNS = 6
     }
 }
 
