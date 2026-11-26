@@ -28,6 +28,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -84,7 +85,7 @@ fun computeTileScale(): Float {
 }
 
 @Composable
-private fun rememberAxQsTileIconShape(): Shape {
+internal fun rememberAxQsTileIconShape(): Shape {
     val context = LocalContext.current
     var shapeKey by
         remember {
@@ -120,6 +121,30 @@ private fun rememberAxQsTileIconShape(): Shape {
     }
 
     return remember(shapeKey) { QSTileIconShapes.shapeForKey(shapeKey) }
+}
+
+@Composable
+fun AxQsTileIconChip(
+    colors: TileColors,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val iconShape = rememberAxQsTileIconShape()
+    val chipColor by
+        animateColorAsState(
+            targetValue =
+                if (colors.iconBackground == Color.Transparent) {
+                    colors.icon.copy(alpha = ICON_CHIP_ALPHA)
+                } else {
+                    colors.iconBackground
+                },
+            label = "AxQSTileIconChipBackground",
+        )
+    Box(
+        modifier = modifier.background(chipColor, iconShape),
+        contentAlignment = Alignment.Center,
+        content = content,
+    )
 }
 
 object AxTileDefaults {
@@ -185,7 +210,8 @@ fun AxLargeTileContent(
                     end = AxTileDefaults.LargeTileEndPadding * scale,
                 ),
         ) {
-            Box(
+            AxQsTileIconChip(
+                colors = colors,
                 modifier =
                     Modifier.fillMaxHeight()
                         .widthIn(min = 48.dp * scale)
@@ -198,7 +224,6 @@ fun AxLargeTileContent(
                                     hapticFeedbackEnabled = !Flags.msdlFeedback(),
                                 )
                         },
-                contentAlignment = Alignment.Center,
             ) {
                 SmallTileContent(
                     iconProvider = iconProvider,
