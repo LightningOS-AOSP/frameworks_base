@@ -32,6 +32,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.annotation.LayoutRes
 import androidx.compose.foundation.basicMarquee
@@ -347,16 +348,47 @@ fun AxQuickSettingsClock(
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
     when (clockStyle) {
-        0 -> AxHeaderClock(onClick = viewModel::onClockClicked, textColor = textColor, modifier = modifier)
-        // TODO: Restore custom QS header clock layouts (chip/oos/analog/simple) from the
-        // original Axion/Lightning port; fall back to the default clock until then.
-        else -> AxHeaderClock(onClick = viewModel::onClockClicked, textColor = textColor, modifier = modifier)
+        1 ->
+            AxCustomClockView(
+                layoutRes = R.layout.qs_header_clock_chip,
+                textColor = textColor,
+                onClick = viewModel::onClockClicked,
+                modifier = modifier,
+            )
+        2 ->
+            AxCustomClockView(
+                layoutRes = R.layout.qs_header_clock_oos,
+                textColor = textColor,
+                onClick = viewModel::onClockClicked,
+                modifier = modifier,
+            )
+        3 ->
+            AxCustomClockView(
+                layoutRes = R.layout.qs_header_clock_analog,
+                textColor = textColor,
+                onClick = viewModel::onClockClicked,
+                modifier = modifier,
+            )
+        4 ->
+            AxCustomClockView(
+                layoutRes = R.layout.qs_header_clock_simple,
+                textColor = textColor,
+                onClick = viewModel::onClockClicked,
+                modifier = modifier,
+            )
+        else ->
+            AxHeaderClock(
+                onClick = viewModel::onClockClicked,
+                textColor = textColor,
+                modifier = modifier,
+            )
     }
 }
 
 @Composable
 private fun AxCustomClockView(
     @LayoutRes layoutRes: Int,
+    textColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -369,8 +401,20 @@ private fun AxCustomClockView(
                 view.setOnClickListener { onClick() }
                 view
             },
+            update = { view -> applyClockTextColor(view, textColor.toArgb()) },
             modifier = modifier.wrapContentWidth(unbounded = true).clickable(onClick = onClick),
         )
+    }
+}
+
+private fun applyClockTextColor(view: View, color: Int) {
+    if (view is TextView) {
+        view.setTextColor(color)
+    }
+    if (view is ViewGroup) {
+        for (index in 0 until view.childCount) {
+            applyClockTextColor(view.getChildAt(index), color)
+        }
     }
 }
 
