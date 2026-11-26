@@ -225,7 +225,7 @@ constructor(
                 DynamicIslandFeatureSettings.observeDynamicIslandFeatureEnabled(
                     context,
                     DynamicIslandFeatureSettings.SHOW_LYRICS,
-                    true,
+                    false,
                 ),
             ) { state, lyricsEnabled ->
                 Pair(state.model, lyricsEnabled)

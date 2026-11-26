@@ -709,7 +709,7 @@ public class ThemeOverlayController implements CoreStartable, Dumpable {
                 JSONObject object = new JSONObject(overlayPackageJson);
                 mContrast = object.optDouble("_contrast_level", 0.0);
                 mChromaBoost = object.optDouble("_chroma_boost", 0.0);
-                mIsFidelityEnabled = object.optBoolean("_fidelity_enabled", false);
+                mIsFidelityEnabled = object.optBoolean("_fidelity_enabled", true);
                 mChromaAccent1 = object.optDouble("_chroma_accent1", 0.0);
                 mChromaAccent2 = object.optDouble("_chroma_accent2", 0.0);
                 mChromaAccent3 = object.optDouble("_chroma_accent3", 0.0);

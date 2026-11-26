@@ -64,6 +64,6 @@ class BlurConfig(
         const val KEY_BLUR_RADIUS_PCT = "system_blur_radius_pct"
         private const val MIN_BLUR_RADIUS_PCT = 0f
         private const val MAX_BLUR_RADIUS_PCT = 100f
-        private const val DEFAULT_BLUR_RADIUS_PCT = MAX_BLUR_RADIUS_PCT
+        private const val DEFAULT_BLUR_RADIUS_PCT = 80f
     }
 }

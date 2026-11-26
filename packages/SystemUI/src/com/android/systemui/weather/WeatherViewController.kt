@@ -96,7 +96,7 @@ class WeatherViewController(
         showWeatherText = getSystemSetting(LOCKSCREEN_WEATHER_TEXT, defaultValue = 1),
         showWindInfo = getSystemSetting(LOCKSCREEN_WEATHER_WIND_INFO),
         showHumidityInfo = getSystemSetting(LOCKSCREEN_WEATHER_HUMIDITY_INFO),
-        customClockWeather = getSecureSetting(CUSTOM_CLOCK_WEATHER, defaultValue = 1),
+        customClockWeather = getSecureSetting(CUSTOM_CLOCK_WEATHER, defaultValue = 0),
     )
 
     private fun getSystemSetting(setting: String, defaultValue: Int = 0) =
