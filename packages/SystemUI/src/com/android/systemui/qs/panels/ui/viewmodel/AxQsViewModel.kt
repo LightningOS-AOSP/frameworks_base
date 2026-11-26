@@ -475,7 +475,7 @@ constructor(
         const val MIN_TILE_GRID_ROWS = 1
         const val MAX_TILE_GRID_ROWS = 3
         const val DEFAULT_CONTROL_COLUMNS = 4
-        const val DEFAULT_QQS_TILE_ROWS = 2
+        const val DEFAULT_QQS_TILE_ROWS = 1
         const val DEFAULT_TILE_GRID_ROWS = 3
         val DEFAULT_NETWORK_IDS = listOf("wifi", "internet")
         val DEFAULT_CONTROL_IDS =

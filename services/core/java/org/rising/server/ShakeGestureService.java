@@ -22,6 +22,8 @@ import android.os.Looper;
 import android.os.UserHandle;
 import android.provider.Settings;
 
+import lineageos.providers.LineageSettings;
+
 public final class ShakeGestureService {
 
     private static final String TAG = "ShakeGestureService";
@@ -96,7 +98,9 @@ public final class ShakeGestureService {
             mContext.getContentResolver().registerContentObserver(
                     Settings.System.getUriFor(SHAKE_GESTURES_ENABLED), false, this, USER_ALL);
             mContext.getContentResolver().registerContentObserver(
-                    Settings.System.getUriFor(SHAKE_GESTURES_ACTION), false, this, USER_ALL);
+                    LineageSettings.System.getUriFor(
+                            LineageSettings.System.KEY_SHAKE_GESTURE_ACTION),
+                    false, this, USER_ALL);
         }
         @Override
         public void onChange(boolean selfChange) {

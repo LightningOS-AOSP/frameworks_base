@@ -424,7 +424,7 @@ public abstract class LogoImage extends ImageView implements DarkReceiver {
                     Settings.System.STATUS_BAR_LOGO_COLOR, 0,
                     UserHandle.USER_CURRENT);
             mLogoColorCustom = Settings.System.getIntForUser(mContext.getContentResolver(),
-                    Settings.System.STATUS_BAR_LOGO_COLOR_PICKER, 0xff1a73e8,
+                    Settings.System.STATUS_BAR_LOGO_COLOR_PICKER, 0xffffffff,
                     UserHandle.USER_CURRENT);
 
             String newCustomPath = Settings.System.getStringForUser(

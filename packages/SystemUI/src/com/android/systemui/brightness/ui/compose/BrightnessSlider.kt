@@ -241,7 +241,7 @@ fun BrightnessSlider(
         )
 
         cr.registerContentObserver(
-            LineageSettings.Secure.getUriFor(Settings.System.QS_BRIGHTNESS_SLIDER_HAPTIC),
+            Settings.System.getUriFor(Settings.System.QS_BRIGHTNESS_SLIDER_HAPTIC),
             false, observer, UserHandle.USER_ALL
         )
 
