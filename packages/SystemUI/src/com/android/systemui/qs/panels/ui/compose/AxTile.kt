@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -259,15 +260,22 @@ fun ContentScope.AxTile(
                 ) { isCompact ->
                     Box(Modifier.fillMaxSize()) {
                         if (isCompact) {
-                            SmallTileContent(
-                                iconProvider = iconProvider,
-                                color = colors.icon,
-                                size = { compactIconSize },
+                            AxQsTileIconChip(
+                                colors = colors,
                                 modifier =
-                                    Modifier.align(Alignment.Center).bounceScale {
-                                        contentBounceable.iconBounceScale
-                                    },
-                            )
+                                    Modifier.align(Alignment.Center)
+                                        .size(
+                                            CommonTileDefaults.ToggleTargetSize *
+                                                LocalTileScale.current
+                                        )
+                                        .bounceScale { contentBounceable.iconBounceScale },
+                            ) {
+                                SmallTileContent(
+                                    iconProvider = iconProvider,
+                                    color = colors.icon,
+                                    size = { compactIconSize },
+                                )
+                            }
                         } else {
                             val iconShape by AxTileColorsDefaults.animateIconShapeAsState(uiState.visualState)
                             val secondaryClick: (() -> Unit)? =
